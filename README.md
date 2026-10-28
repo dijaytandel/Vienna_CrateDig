@@ -21,4 +21,4 @@ See the [PRD](docs/PRD.md) for Phase 1 features and user stories.
 | `client/`    | React PWA (local dev: Vite)                     |
 | `api/`       | Express API (local dev: Node)                   |
 | `supabase/`  | SQL migrations + seeds                          |
-| `docs/`      | PRD, site map, OpenAPI, deployment notes        |
+| `docs/`      | [PRD](docs/PRD.md), [site map](docs/SITEMAP.md), OpenAPI, deployment notes |
