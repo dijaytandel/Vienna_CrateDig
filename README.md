@@ -12,7 +12,7 @@ CrateDig is built to **enhance, not replace,** in-person crate-digging. It is a 
 
 **Out of scope:** remote e-commerce, automated POS sync, shipping fulfillment.
 
-See the [PRD](docs/PRD.md) for Phase 1 features and user stories.
+See the [PRD](docs/PRD.md) for Phase 1 features and user stories, the [task list](docs/TASKS.md) for development tasks, and the [workspace rules](docs/WORKSPACE_RULES.md) before contributing.
 
 ## Repo layout
 
