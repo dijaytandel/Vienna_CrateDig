@@ -102,12 +102,14 @@ Below is the comprehensive list of 29 generated user stories analyzed during the
 | 28 | As a collector, I want to track my favorite music genres so the app knows what I like. | **REJECTED** | Vague / Redundant. Genre filtering is already embedded directly in collection and search parameters (Features 1.1 & 2.1). |
 | 29 | As a store owner, I want to print shipping labels for customers who live far away. | **REJECTED** | Out of Scope: Shipping Logistics. Order fulfillment and postal shipping label generation are explicitly declared out of scope. |
 
-## 4. Implementation Notes & Open Questions
+## 4. Implementation Decisions
 
-_Not part of Specification #1 — added during repo setup to track decisions needed before build._
+_Not part of Specification #1. These clarifications from the project owner apply on top of the spec._
 
-- **Radius units:** The spec uses miles (5 / 10 / 25). For the Vienna deployment, should the default be kilometres (e.g. 5 / 10 / 25 km) with miles as a user preference?
-- **Sighting freshness:** Define when a crowdsourced sighting becomes stale (e.g. auto-expire after N days unless verified by the store).
-- **Merchant verification:** Define how a Store Manager account is verified and linked to a store (feature 4.1).
-- **Broadcast delivery:** US-08 says collectors are "notified" — confirm whether Phase 1 means an in-app feed only, or also web push notifications via the PWA.
-- **Catalog data source:** Confirm whether album metadata is entered manually or looked up from an external catalog (e.g. Discogs API, read-only).
+| Topic | Decision | Affects |
+|---|---|---|
+| Radius units | Default unit is **miles** (5 / 10 / 25). Users can switch to **kilometres** in their preferences. | 2.1, 4.2 |
+| Sighting freshness | Crowdsourced sightings **auto-expire 30 days** after they are reported. | 2.2, 2.4, 3.2 |
+| Merchant verification | Two paths to become a Verified Store Manager: (a) **corporate email binding**, where a confirmed email on the store's domain links the manager to that store; or (b) **document-based application**, where the manager submits supporting documents for manual review. | 4.1, 3.x |
+| Broadcast delivery | Stock arrival broadcasts appear in the **in-app feed** and are also sent as **web push notifications** through the PWA. | 3.1, 4.2 |
+| Catalog data source | Album metadata (title, artist, year, genre, pressing) comes from an **external catalog** and is read-only; no e-commerce features are used. | 1.1, 1.2, 2.1 |
