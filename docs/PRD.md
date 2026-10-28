@@ -110,6 +110,6 @@ _Not part of Specification #1. These clarifications from the project owner apply
 |---|---|---|
 | Radius units | Default unit is **miles** (5 / 10 / 25). Users can switch to **kilometres** in their preferences. | 2.1, 4.2 |
 | Sighting freshness | Crowdsourced sightings **auto-expire 30 days** after they are reported. | 2.2, 2.4, 3.2 |
-| Merchant verification | Two paths to become a Verified Store Manager: (a) **corporate email binding**, where a confirmed email on the store's domain links the manager to that store; or (b) **document-based application**, where the manager submits supporting documents for manual review. | 4.1, 3.x |
+| Merchant verification | Two paths to become a Verified Store Manager: (a) **corporate email binding**, where a confirmed email on the store's domain links the manager to that store; or (b) **document-based application**, where the manager submits supporting documents for manual review. | 4.1, 3.1, 3.2 |
 | Broadcast delivery | Stock arrival broadcasts appear in the **in-app feed** and are also sent as **web push notifications** through the PWA. | 3.1, 4.2 |
 | Catalog data source | Album metadata (title, artist, year, genre, pressing) comes from an **external catalog** and is read-only; no e-commerce features are used. | 1.1, 1.2, 2.1 |
