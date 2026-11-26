@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import Button from '../components/ui/Button';
 import BroadcastPushToggle from './BroadcastPushToggle';
+import StoreClaimStatus from './StoreClaimStatus';
 
 export default function ProfileScreen() {
   const { user, preferences, signOut } = useAuth();
@@ -30,6 +31,7 @@ export default function ProfileScreen() {
       </dl>
       <p className="muted">Editing preferences arrives with the preferences task.</p>
       <BroadcastPushToggle />
+      <StoreClaimStatus />
       {error && (
         <p role="alert" className="form-error">
           {error}

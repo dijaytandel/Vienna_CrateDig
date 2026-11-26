@@ -595,6 +595,99 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '503':
           $ref: '#/components/responses/DatabaseUnavailable'
+  /merchant/verification:
+    get:
+      tags: [stores]
+      operationId: getMyStoreClaim
+      summary: The caller's store-manager application and its status, or null
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Current claim
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [claim]
+                properties:
+                  claim:
+                    oneOf:
+                      - $ref: '#/components/schemas/StoreClaim'
+                      - type: 'null'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+    post:
+      tags: [stores]
+      operationId: claimStore
+      summary: Apply to manage a store with a business-license URL (sets status pending)
+      description: >-
+        Verified stores and stores with someone else's pending claim cannot be chosen. Applying
+        again replaces the caller's earlier unverified claim. An admin approves or rejects in the
+        database (docs/DEPLOYMENT.md §6).
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [storeId, licenseDocUrl]
+              additionalProperties: false
+              properties:
+                storeId: { type: string, format: uuid }
+                licenseDocUrl: { type: string, format: uri, pattern: '^https://', maxLength: 500 }
+      responses:
+        '201':
+          description: Claim submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [claim]
+                properties:
+                  claim: { $ref: '#/components/schemas/StoreClaim' }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+  /merchant/claimable-stores:
+    get:
+      tags: [stores]
+      operationId: listClaimableStores
+      summary: Stores the caller may apply for, by name (not verified, no pending claim by others)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Claimable stores
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [stores]
+                properties:
+                  stores:
+                    type: array
+                    items:
+                      type: object
+                      required: [storeId, businessName, city, state, zip]
+                      properties:
+                        storeId: { type: string, format: uuid }
+                        businessName: { type: string }
+                        city: { type: string }
+                        state: { type: string }
+                        zip: { type: string }
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
   /push/public-key:
     get:
       tags: [push]
@@ -1048,6 +1141,16 @@ components:
       properties:
         open: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$', example: '11:00' }
         close: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$', example: '19:00' }
+    StoreClaim:
+      type: object
+      required: [storeId, businessName, city, state, status, licenseDocUrl]
+      properties:
+        storeId: { type: string, format: uuid }
+        businessName: { type: string }
+        city: { type: string }
+        state: { type: string }
+        status: { type: string, enum: [pending, verified, rejected] }
+        licenseDocUrl: { type: [string, 'null'] }
     StoreDetail:
       allOf:
         - $ref: '#/components/schemas/StoreSummary'
