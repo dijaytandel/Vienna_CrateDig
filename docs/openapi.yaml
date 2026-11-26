@@ -22,7 +22,6 @@ tags:
     description: My Crate (Collection and Want List)
   - name: sightings
     description: Community sightings of records at stores
-    description: Personal Collection and Want List
 paths:
   /health:
     get:
