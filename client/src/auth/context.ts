@@ -26,7 +26,7 @@ export interface AuthState {
   preferences: Preferences | null;
   signIn(email: string, password: string): Promise<AuthResult>;
   signUp(input: SignUpInput): Promise<AuthResult>;
-  signOut(): Promise<void>;
+  signOut(): Promise<AuthResult>;
 }
 
 const unavailable = async () => ({ error: 'Accounts are not available right now.' });
@@ -46,7 +46,7 @@ export const GUEST: AuthState = {
   preferences: null,
   signIn: unavailable,
   signUp: unavailable,
-  signOut: async () => {},
+  signOut: async () => ({ error: null }),
 };
 
 export const AuthContext = createContext<AuthState>(GUEST);

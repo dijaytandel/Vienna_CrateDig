@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import AuthProvider from './AuthProvider';
 import { useAuth, type AuthState } from './context';
@@ -9,7 +9,12 @@ const session = {
   user: { id: 'u1', email: 'dana@x.test', user_metadata: { display_name: 'Meta Name' } },
 } as unknown as Session;
 
-function mockClient(stored: Session | null, profile: Record<string, unknown> | null = null) {
+function mockClient(
+  stored: Session | null,
+  profile: Record<string, unknown> | null = null,
+  deferProfile = false,
+) {
+  let resolveProfile: (p: Record<string, unknown>) => void = () => {};
   const auth = {
     getSession: vi.fn(async () => ({ data: { session: stored } })),
     onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
@@ -20,15 +25,25 @@ function mockClient(stored: Session | null, profile: Record<string, unknown> | n
     })),
     signOut: vi.fn(async () => ({ error: null })),
   };
-  const maybeSingle = vi.fn(async () => ({ data: profile }));
+  const maybeSingle = vi.fn(() =>
+    deferProfile
+      ? new Promise<{ data: Record<string, unknown> }>((resolve) => {
+          resolveProfile = (p) => resolve({ data: p });
+        })
+      : Promise.resolve({ data: profile }),
+  );
   const client = { auth, from: () => ({ select: () => ({ eq: () => ({ maybeSingle }) }) }) };
-  return { client: client as unknown as SupabaseClient, auth };
+  return {
+    client: client as unknown as SupabaseClient,
+    auth,
+    resolveProfile: (p: Record<string, unknown>) => resolveProfile(p),
+  };
 }
 
 const latest: { current: AuthState | null } = { current: null };
 function Probe() {
   const auth = useAuth();
-  useEffect(() => {
+  useLayoutEffect(() => {
     latest.current = auth;
   });
   return <p>{auth.status === 'ready' ? (auth.user?.displayName ?? 'guest') : 'loading'}</p>;
@@ -72,6 +87,47 @@ describe('AuthProvider', () => {
     );
     expect(await screen.findByText('Meta Name')).toBeInTheDocument();
     expect(state.preferences?.radiusMiles).toBe(10);
+  });
+
+  it('uses the sign-up ZIP when the profile is unreadable', async () => {
+    const withZip = {
+      user: { ...session.user, user_metadata: { display_name: 'Z', default_zip: '94110' } },
+    } as unknown as Session;
+    const { client } = mockClient(withZip);
+    render(
+      <AuthProvider client={client}>
+        <Probe />
+      </AuthProvider>,
+    );
+    await screen.findByText('Z');
+    expect(state.preferences?.defaultZip).toBe('94110');
+  });
+
+  it('keeps the session when sign-out fails', async () => {
+    const { client, auth } = mockClient(session);
+    auth.signOut.mockResolvedValueOnce({ error: { message: 'offline' } } as never);
+    render(
+      <AuthProvider client={client}>
+        <Probe />
+      </AuthProvider>,
+    );
+    await screen.findByText('Meta Name');
+    expect((await act(() => state.signOut())).error).toMatch(/could not sign out/i);
+    expect(screen.getByText('Meta Name')).toBeInTheDocument();
+  });
+
+  it('ignores a profile lookup that finishes after sign-out', async () => {
+    const { client, auth, resolveProfile } = mockClient(session, null, true);
+    render(
+      <AuthProvider client={client}>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(auth.getSession).toHaveBeenCalled());
+    await act(() => state.signOut());
+    await act(async () => resolveProfile({ display_name: 'Stale' }));
+    expect(screen.getByText('guest')).toBeInTheDocument();
+    expect(screen.queryByText('Stale')).toBeNull();
   });
 
   it('maps auth errors and signs out', async () => {

@@ -38,6 +38,7 @@ export function FakeAuth({
     },
     async signOut() {
       setCurrent(null);
+      return { error: null };
     },
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

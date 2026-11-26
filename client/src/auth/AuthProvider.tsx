@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 import type { AvatarUser } from '../components/AvatarMenu';
 import {
@@ -27,7 +27,8 @@ async function loadAccount(client: SupabaseClient, session: Session): Promise<Ac
     )
     .eq('user_id', session.user.id)
     .maybeSingle();
-  const meta = session.user.user_metadata as { display_name?: string };
+  const meta = session.user.user_metadata as { display_name?: string; default_zip?: string };
+  const metaZip = /^\d{5}$/.test(meta.default_zip ?? '') ? meta.default_zip! : null;
   return {
     user: {
       displayName:
@@ -36,7 +37,7 @@ async function loadAccount(client: SupabaseClient, session: Session): Promise<Ac
     },
     preferences: {
       email: session.user.email ?? null,
-      defaultZip: data?.default_zip ?? DEFAULT_PREFERENCES.defaultZip,
+      defaultZip: data?.default_zip ?? metaZip ?? DEFAULT_PREFERENCES.defaultZip,
       radiusMiles: data?.default_radius_miles ?? DEFAULT_PREFERENCES.radiusMiles,
       distanceUnit: data?.distance_unit ?? DEFAULT_PREFERENCES.distanceUnit,
       genres: data?.genre_preferences ?? DEFAULT_PREFERENCES.genres,
@@ -54,13 +55,16 @@ export default function AuthProvider({
   const [session, setSession] = useState<Session | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
   const [status, setStatus] = useState<AuthState['status']>(client ? 'loading' : 'ready');
+  // Bumped on every auth change so a slow profile lookup can't overwrite a newer state.
+  const generation = useRef(0);
 
   useEffect(() => {
     if (!client) return;
     let current = true;
     const apply = async (next: Session | null) => {
+      const mine = ++generation.current;
       const nextAccount = next ? await loadAccount(client, next) : null;
-      if (!current) return;
+      if (!current || mine !== generation.current) return;
       setSession(next);
       setAccount(nextAccount);
       setStatus('ready');
@@ -104,9 +108,13 @@ export default function AuthProvider({
         return { error: null, needsConfirmation: !data.session };
       },
       async signOut() {
-        await client.auth.signOut();
+        const { error } = await client.auth.signOut();
+        if (error) return { error: 'Could not sign out. Check your connection and try again.' };
+        generation.current++;
         setSession(null);
         setAccount(null);
+        setStatus('ready');
+        return { error: null };
       },
     };
   }, [client, status, session, account]);
