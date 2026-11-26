@@ -4,6 +4,7 @@ import { createApp } from '../app.js';
 import type { MasterRecordRepository } from '../catalog/repository.js';
 import { createCatalogService } from '../catalog/service.js';
 import type { CatalogProvider, CatalogResult } from '../catalog/types.js';
+import { AS_ALICE, fakeAuth } from '../test/fakeAuth.js';
 
 const nevermind: CatalogResult = {
   apiSourceId: 'discogs:249504',
@@ -29,7 +30,7 @@ function setup() {
       return rows.get(r.apiSourceId)!;
     }),
   };
-  const app = createApp({ catalog: createCatalogService([upstream]), records });
+  const app = createApp({ auth: fakeAuth(), catalog: createCatalogService([upstream]), records });
   return { app, rows };
 }
 
@@ -63,13 +64,30 @@ describe('GET /api/v1/catalog/search', () => {
 });
 
 describe('POST /api/v1/catalog/records', () => {
+  it('returns 401 without a valid token', async () => {
+    const { app, rows } = setup();
+    const anonymous = await request(app)
+      .post('/api/v1/catalog/records')
+      .send({ apiSourceId: 'discogs:249504' });
+    const expired = await request(app)
+      .post('/api/v1/catalog/records')
+      .set('Authorization', 'Bearer nobody')
+      .send({ apiSourceId: 'discogs:249504' });
+    expect(anonymous.status).toBe(401);
+    expect(anonymous.body.error.code).toBe('UNAUTHENTICATED');
+    expect(expired.status).toBe(401);
+    expect(rows.size).toBe(0);
+  });
+
   it('upserts one master record per apiSourceId', async () => {
     const { app, rows } = setup();
     const first = await request(app)
       .post('/api/v1/catalog/records')
+      .set(...AS_ALICE)
       .send({ apiSourceId: 'discogs:249504' });
     const second = await request(app)
       .post('/api/v1/catalog/records')
+      .set(...AS_ALICE)
       .send({ apiSourceId: 'discogs:249504' });
     expect(first.status).toBe(200);
     expect(first.body).toEqual({ recordId: 'uuid-1', ...nevermind });
@@ -81,10 +99,15 @@ describe('POST /api/v1/catalog/records', () => {
     const { app } = setup();
     const missing = await request(app)
       .post('/api/v1/catalog/records')
+      .set(...AS_ALICE)
       .send({ apiSourceId: 'discogs:1' });
-    const bad = await request(app).post('/api/v1/catalog/records').send({ apiSourceId: 'x' });
+    const bad = await request(app)
+      .post('/api/v1/catalog/records')
+      .set(...AS_ALICE)
+      .send({ apiSourceId: 'x' });
     const padded = await request(app)
       .post('/api/v1/catalog/records')
+      .set(...AS_ALICE)
       .send({ apiSourceId: 'discogs:0249504' });
     expect(missing.status).toBe(404);
     expect(bad.status).toBe(400);
