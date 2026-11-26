@@ -14,10 +14,15 @@ import { parse } from './parse.js';
 
 const RADII = [5, 10, 25] as const;
 
+// `?lat=&zip=97205` must mean "no lat", not lat 0.
+const blankAsUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
+const optional = <T extends z.ZodType>(schema: T) =>
+  z.preprocess(blankAsUndefined, schema.optional());
+
 const listQuery = z
   .object({
-    lat: z.coerce.number().min(-90).max(90).optional(),
-    lng: z.coerce.number().min(-180).max(180).optional(),
+    lat: optional(z.coerce.number().min(-90).max(90)),
+    lng: optional(z.coerce.number().min(-180).max(180)),
     zip: z
       .string()
       .regex(/^\d{5}$/, 'Must be a 5-digit ZIP')

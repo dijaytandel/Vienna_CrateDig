@@ -77,6 +77,12 @@ describe('GET /api/v1/stores', () => {
     expect(res.body.stores).toHaveLength(4);
   });
 
+  it('ignores blank lat/lng and uses the ZIP', async () => {
+    const res = await request(setup().app).get('/api/v1/stores?lat=&lng=%20&zip=97205');
+    expect(res.status).toBe(200);
+    expect(res.body.origin.source).toBe('zip');
+  });
+
   it('defaults to a 10 mi radius', async () => {
     const res = await request(setup().app).get('/api/v1/stores?zip=97205');
     expect(res.body.radius).toBe(10);
