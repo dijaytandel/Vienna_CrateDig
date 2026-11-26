@@ -238,6 +238,7 @@ export default function DiscoverScreen() {
           <label className="field">
             {origin ? 'Show a different ZIP' : 'Enter your 5-digit ZIP code to see nearby finds'}
             <input
+              className="input"
               inputMode="numeric"
               autoComplete="postal-code"
               maxLength={5}

@@ -173,6 +173,7 @@ export default function BroadcastComposerScreen() {
         <label className="field">
           Photo link (optional)
           <input
+            className="input"
             type="url"
             inputMode="url"
             value={photoUrl}
@@ -217,6 +218,7 @@ export default function BroadcastComposerScreen() {
             <label className="field">
               Find a record to feature
               <input
+                className="input"
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -253,9 +255,11 @@ export default function BroadcastComposerScreen() {
         </fieldset>
 
         {summaryError && summary.length > 0 && <p className="form-error">{summaryError}</p>}
-        <Button type="submit" block disabled={!canSubmit}>
-          Preview
-        </Button>
+        <div className="action-bar">
+          <Button type="submit" block disabled={!canSubmit}>
+            Preview
+          </Button>
+        </div>
       </form>
     </section>
   );

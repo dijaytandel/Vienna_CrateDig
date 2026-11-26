@@ -145,6 +145,7 @@ function ClaimForm({
       <div className="field">
         <label htmlFor="claim-url">Business license URL</label>
         <input
+          className="input"
           id="claim-url"
           type="url"
           inputMode="url"
@@ -169,9 +170,11 @@ function ClaimForm({
           {error}
         </p>
       )}
-      <Button type="submit" disabled={!ready || busy}>
-        {busy ? 'Submitting…' : 'Submit for review'}
-      </Button>
+      <div className="action-bar">
+        <Button type="submit" disabled={!ready || busy}>
+          {busy ? 'Submitting…' : 'Submit for review'}
+        </Button>
+      </div>
     </form>
   );
 }

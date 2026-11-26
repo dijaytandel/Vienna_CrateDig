@@ -91,6 +91,7 @@ function PreferencesForm({ displayName, prefs }: { displayName: string; prefs: P
       <div className="field">
         <label htmlFor="pref-name">Display name</label>
         <input
+          className="input"
           id="pref-name"
           maxLength={60}
           autoComplete="nickname"
@@ -106,6 +107,7 @@ function PreferencesForm({ displayName, prefs }: { displayName: string; prefs: P
       <div className="field">
         <label htmlFor="pref-zip">Home ZIP</label>
         <input
+          className="input"
           id="pref-zip"
           inputMode="numeric"
           autoComplete="postal-code"
@@ -161,9 +163,11 @@ function PreferencesForm({ displayName, prefs }: { displayName: string; prefs: P
           {status.text}
         </p>
       )}
-      <Button type="submit" disabled={busy || !!nameError || !!zipError}>
-        {busy ? 'Saving…' : 'Save preferences'}
-      </Button>
+      <div className="action-bar">
+        <Button type="submit" disabled={busy || !!nameError || !!zipError}>
+          {busy ? 'Saving…' : 'Save preferences'}
+        </Button>
+      </div>
     </form>
   );
 }
