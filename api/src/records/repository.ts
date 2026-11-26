@@ -3,7 +3,7 @@ import { RECORD_COLUMNS, toRecord, type RecordSummary } from '../crate/repositor
 
 export interface RecordSighting {
   sightingId: string;
-  priceUsd: number;
+  priceUsd: number | null;
   conditionGrade: string;
   specialAttributes: string | null;
   storeVerified: boolean;
@@ -43,7 +43,7 @@ export function supabaseRecords(url: string, serviceRoleKey: string): RecordRepo
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sightings: rows.map((r: any) => ({
           sightingId: r.sighting_id,
-          priceUsd: Number(r.price_usd),
+          priceUsd: r.price_usd == null ? null : Number(r.price_usd),
           conditionGrade: r.condition_grade,
           specialAttributes: r.special_attributes,
           storeVerified: r.store_verified,

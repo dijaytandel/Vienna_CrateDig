@@ -75,7 +75,9 @@ export default function ReportScreen() {
 
   // GPS pre-selects the nearest verified store; the dropdown can still override it.
   const nearestId = nearest.data?.store.storeId;
-  const storeId = storeChoice ?? nearestId ?? '';
+  const chosenId = storeChoice ?? nearestId ?? '';
+  // Only a store the collector can see in the dropdown counts as selected.
+  const storeId = options.some((s) => s.storeId === chosenId) ? chosenId : '';
 
   const priceUsd = price.trim() === '' ? null : parseUsd(price);
   const priceError = Number.isNaN(priceUsd) ? 'Enter a dollar amount like 24.99' : null;

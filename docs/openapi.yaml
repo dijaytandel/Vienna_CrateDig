@@ -268,7 +268,7 @@ paths:
                           type: object
                           properties:
                             sightingId: { type: string, format: uuid }
-                            priceUsd: { type: number }
+                            priceUsd: { type: [number, 'null'] }
                             conditionGrade: { $ref: '#/components/schemas/ConditionGrade' }
                             storeVerified: { type: boolean }
                             sightingTimestamp: { type: string, format: date-time }
@@ -288,7 +288,12 @@ paths:
       security: [{ bearerAuth: [] }]
       parameters:
         - { name: listType, in: query, schema: { $ref: '#/components/schemas/ListType' } }
-        - { name: q, in: query, description: 'Matches title, artist or genre', schema: { type: string } }
+        - {
+            name: q,
+            in: query,
+            description: 'Matches title, artist or genre',
+            schema: { type: string },
+          }
         - { name: genre, in: query, schema: { type: string } }
         - { name: recordId, in: query, schema: { type: string, format: uuid } }
       responses:
@@ -325,7 +330,8 @@ paths:
                 recordId: { type: string, format: uuid }
                 listType: { $ref: '#/components/schemas/ListType' }
                 conditionGrade: { $ref: '#/components/schemas/ConditionGrade' }
-                specialAttributes: { type: array, maxItems: 10, items: { type: string, maxLength: 40 } }
+                specialAttributes:
+                  { type: array, maxItems: 10, items: { type: string, maxLength: 40 } }
                 purchasePriceUsd: { type: number, minimum: 0, multipleOf: 0.01 }
                 userNotes: { type: string, maxLength: 1000 }
                 force: { type: boolean, description: Add a second Collection copy anyway }
@@ -370,7 +376,8 @@ paths:
               type: object
               minProperties: 1
               properties:
-                conditionGrade: { oneOf: [{ $ref: '#/components/schemas/ConditionGrade' }, { type: 'null' }] }
+                conditionGrade:
+                  { oneOf: [{ $ref: '#/components/schemas/ConditionGrade' }, { type: 'null' }] }
                 specialAttributes: { type: array, maxItems: 10, items: { type: string } }
                 purchasePriceUsd: { type: [number, 'null'], minimum: 0 }
                 userNotes: { type: [string, 'null'], maxLength: 1000 }
@@ -410,7 +417,12 @@ paths:
               type: object
               required: [storeId]
               properties:
-                storeId: { type: [string, 'null'], format: uuid, description: null means acquired elsewhere }
+                storeId:
+                  {
+                    type: [string, 'null'],
+                    format: uuid,
+                    description: null means acquired elsewhere,
+                  }
                 purchasePriceUsd: { type: number, minimum: 0 }
       responses:
         '200':
@@ -455,7 +467,8 @@ paths:
                 storeId: { type: string, format: uuid }
                 conditionGrade: { $ref: '#/components/schemas/ConditionGrade' }
                 priceUsd: { type: [number, 'null'], minimum: 0, multipleOf: 0.01 }
-                specialAttributes: { type: array, maxItems: 10, items: { type: string, maxLength: 40 } }
+                specialAttributes:
+                  { type: array, maxItems: 10, items: { type: string, maxLength: 40 } }
       responses:
         '200':
           description: Replayed an earlier report with the same Idempotency-Key
@@ -585,7 +598,8 @@ components:
           description: When null, the client shows a two-letter initials badge.
     StoreSummary:
       type: object
-      required: [storeId, businessName, streetAddress, city, state, zip, geoLat, geoLng, tags, isVerified]
+      required:
+        [storeId, businessName, streetAddress, city, state, zip, geoLat, geoLng, tags, isVerified]
       properties:
         storeId: { type: string, format: uuid }
         businessName: { type: string }
@@ -671,7 +685,7 @@ components:
         albumTitle: { type: string }
         genre: { type: [string, 'null'] }
         coverArtUrl: { type: [string, 'null'], format: uri }
-        priceUsd: { type: number, minimum: 0, example: 28 }
+        priceUsd: { type: [number, 'null'], minimum: 0, example: 28 }
         conditionGrade: { type: string, enum: [mint, near_mint, vg_plus, vg, fair] }
         specialAttributes: { type: [string, 'null'] }
         storeVerified: { type: boolean }
@@ -709,7 +723,7 @@ components:
       type: object
       properties:
         sightingId: { type: string, format: uuid }
-        priceUsd: { type: number, minimum: 0 }
+        priceUsd: { type: [number, 'null'], minimum: 0 }
         conditionGrade: { $ref: '#/components/schemas/ConditionGrade' }
         specialAttributes: { type: [string, 'null'] }
         storeVerified: { type: boolean }
@@ -730,7 +744,8 @@ components:
       properties:
         crateItemId: { type: string, format: uuid }
         listType: { $ref: '#/components/schemas/ListType' }
-        conditionGrade: { oneOf: [{ $ref: '#/components/schemas/ConditionGrade' }, { type: 'null' }] }
+        conditionGrade:
+          { oneOf: [{ $ref: '#/components/schemas/ConditionGrade' }, { type: 'null' }] }
         specialAttributes: { type: array, items: { type: string } }
         purchasePriceUsd: { type: [number, 'null'] }
         userNotes: { type: [string, 'null'] }

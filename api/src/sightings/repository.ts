@@ -8,7 +8,7 @@ export type ModerationAction = 'confirm' | 'flag' | 'mark_sold';
 
 export interface SightingDetail {
   sightingId: string;
-  priceUsd: number;
+  priceUsd: number | null;
   conditionGrade: ConditionGrade;
   specialAttributes: string | null;
   storeVerified: boolean;
@@ -33,7 +33,7 @@ export interface SightingDetail {
 export interface NewSighting {
   recordId: string;
   storeId: string;
-  priceUsd: number;
+  priceUsd: number | null;
   conditionGrade: ConditionGrade;
   specialAttributes: string | null;
   clientRef?: string;
@@ -52,7 +52,7 @@ export const SIGHTING_COLUMNS = `sighting_id, price_usd, condition_grade, specia
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const toSighting = (r: any): SightingDetail => ({
   sightingId: r.sighting_id,
-  priceUsd: Number(r.price_usd),
+  priceUsd: r.price_usd == null ? null : Number(r.price_usd),
   conditionGrade: r.condition_grade,
   specialAttributes: r.special_attributes,
   storeVerified: r.store_verified,

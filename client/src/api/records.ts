@@ -4,7 +4,7 @@ import type { Origin, Unit } from './stores';
 
 export interface RecordSighting {
   sightingId: string;
-  priceUsd: number;
+  priceUsd: number | null;
   conditionGrade: ConditionGrade;
   specialAttributes: string | null;
   storeVerified: boolean;

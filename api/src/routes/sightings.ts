@@ -112,7 +112,7 @@ export function sightingsRouter(
     const created = await db.sightings.create(userId, {
       recordId: recordId!,
       storeId: body.storeId,
-      priceUsd: body.priceUsd ?? 0,
+      priceUsd: body.priceUsd ?? null,
       conditionGrade: body.conditionGrade,
       specialAttributes: body.specialAttributes?.length ? body.specialAttributes.join(', ') : null,
       clientRef,
