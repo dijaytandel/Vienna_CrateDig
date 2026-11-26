@@ -253,9 +253,11 @@ export default function BroadcastComposerScreen() {
         </fieldset>
 
         {summaryError && summary.length > 0 && <p className="form-error">{summaryError}</p>}
-        <Button type="submit" block disabled={!canSubmit}>
-          Preview
-        </Button>
+        <div className="action-bar">
+          <Button type="submit" block disabled={!canSubmit}>
+            Preview
+          </Button>
+        </div>
       </form>
     </section>
   );

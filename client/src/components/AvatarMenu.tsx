@@ -40,13 +40,13 @@ export default function AvatarMenu({ user }: { user: AvatarUser | null }) {
       <button
         type="button"
         className="avatar"
-        aria-label={`Account menu for ${user.displayName}`}
         aria-haspopup="true"
         aria-expanded={open}
         aria-controls={menuId}
         onClick={() => setOpen((o) => !o)}
       >
-        {initials(...user.displayName.split(/\s+/))}
+        <span aria-hidden="true">{initials(...user.displayName.split(/\s+/))}</span>
+        <span className="visually-hidden">Account menu for {user.displayName}</span>
       </button>
       {open && (
         <nav id={menuId} className="avatar-dropdown" aria-label="Account">

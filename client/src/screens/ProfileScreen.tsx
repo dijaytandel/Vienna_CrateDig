@@ -161,9 +161,11 @@ function PreferencesForm({ displayName, prefs }: { displayName: string; prefs: P
           {status.text}
         </p>
       )}
-      <Button type="submit" disabled={busy || !!nameError || !!zipError}>
-        {busy ? 'Saving…' : 'Save preferences'}
-      </Button>
+      <div className="action-bar">
+        <Button type="submit" disabled={busy || !!nameError || !!zipError}>
+          {busy ? 'Saving…' : 'Save preferences'}
+        </Button>
+      </div>
     </form>
   );
 }

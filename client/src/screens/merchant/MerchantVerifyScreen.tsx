@@ -169,9 +169,11 @@ function ClaimForm({
           {error}
         </p>
       )}
-      <Button type="submit" disabled={!ready || busy}>
-        {busy ? 'Submitting…' : 'Submit for review'}
-      </Button>
+      <div className="action-bar">
+        <Button type="submit" disabled={!ready || busy}>
+          {busy ? 'Submitting…' : 'Submit for review'}
+        </Button>
+      </div>
     </form>
   );
 }

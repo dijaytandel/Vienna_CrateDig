@@ -216,9 +216,11 @@ function StoreForm({ store }: { store: StoreDetail }) {
           Saved. <Link to={`/stores/${store.storeId}`}>View your store page</Link>
         </p>
       )}
-      <Button type="submit" disabled={invalid || saving}>
-        {saving ? 'Saving…' : 'Save changes'}
-      </Button>
+      <div className="action-bar">
+        <Button type="submit" disabled={invalid || saving}>
+          {saving ? 'Saving…' : 'Save changes'}
+        </Button>
+      </div>
     </form>
   );
 }
