@@ -281,3 +281,18 @@ a:focus-visible {
   max-width: 420px;
   margin: 0 auto;
 }
+
+.details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.details dt {
+  color: var(--color-muted);
+}
+
+.details dd {
+  margin: 0;
+}
