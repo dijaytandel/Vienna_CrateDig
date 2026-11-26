@@ -13,6 +13,8 @@ import { supabaseRecords, type RecordRepository } from './records/repository.js'
 import { catalogRouter } from './routes/catalog.js';
 import { crateRouter } from './routes/crate.js';
 import { recordsRouter } from './routes/records.js';
+import { nearestStoreRouter, sightingsRouter } from './routes/sightings.js';
+import { supabaseSightings, type SightingRepository } from './sightings/repository.js';
 import { healthRouter } from './routes/health.js';
 import { storesRouter } from './routes/stores.js';
 import { supabaseStores, type StoreRepository } from './stores/repository.js';
@@ -24,6 +26,7 @@ export interface AppOptions {
   stores?: StoreRepository;
   crate?: CrateRepository;
   recordDetails?: RecordRepository;
+  sightings?: SightingRepository;
   now?: () => Date;
   configure?: (v1: Router, auth?: AuthService) => void;
 }
@@ -60,6 +63,7 @@ export function createApp({
   stores = defaultStores(),
   crate = withDb(supabaseCrate)(),
   recordDetails = withDb(supabaseRecords)(),
+  sightings = withDb(supabaseSightings)(),
   now,
   configure,
 }: AppOptions = {}) {
@@ -72,7 +76,12 @@ export function createApp({
   const v1 = Router();
   v1.use('/health', healthRouter);
   v1.use('/catalog', catalogRouter(catalog, records, auth));
+  v1.use('/stores', nearestStoreRouter(stores));
   v1.use('/stores', storesRouter(stores, now));
+  v1.use(
+    '/sightings',
+    sightingsRouter(sightings, stores, catalog, records, auth, now ?? (() => new Date())),
+  );
   v1.use('/crate', crateRouter(crate, catalog, records, auth));
   v1.use('/records', recordsRouter(recordDetails, stores));
   configure?.(v1, auth);

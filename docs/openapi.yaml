@@ -19,6 +19,9 @@ tags:
   - name: stores
     description: Local store directory
   - name: crate
+    description: My Crate (Collection and Want List)
+  - name: sightings
+    description: Community sightings of records at stores
     description: Personal Collection and Want List
 paths:
   /health:
@@ -426,6 +429,113 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /sightings:
+    post:
+      tags: [sightings]
+      operationId: reportSighting
+      summary: Report a record seen at a store
+      description: |
+        The server sets `status: active`, `storeVerified: false`, the reporter and
+        `archiveDate` (+180 days); those fields are ignored if sent. Each user can
+        report 20 sightings per rolling 24 hours. Repeat an `Idempotency-Key` to
+        replay a queued offline report without creating a duplicate.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: Idempotency-Key, in: header, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [storeId, conditionGrade]
+              description: Send exactly one of apiSourceId or recordId.
+              properties:
+                apiSourceId: { $ref: '#/components/schemas/ApiSourceId' }
+                recordId: { type: string, format: uuid }
+                storeId: { type: string, format: uuid }
+                conditionGrade: { $ref: '#/components/schemas/ConditionGrade' }
+                priceUsd: { type: [number, 'null'], minimum: 0, multipleOf: 0.01 }
+                specialAttributes: { type: array, maxItems: 10, items: { type: string, maxLength: 40 } }
+      responses:
+        '200':
+          description: Replayed an earlier report with the same Idempotency-Key
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Sighting' }
+        '201':
+          description: Reported
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Sighting' }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          description: Daily report limit reached
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /sightings/{id}:
+    get:
+      tags: [sightings]
+      operationId: getSighting
+      summary: One sighting with its record, store and reporter
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: lat, in: query, schema: { type: number } }
+        - { name: lng, in: query, schema: { type: number } }
+        - { name: zip, in: query, schema: { type: string, pattern: '^\\d{5}$' } }
+        - { name: unit, in: query, schema: { type: string, enum: [mi, km], default: mi } }
+      responses:
+        '200':
+          description: The sighting
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Sighting'
+                  - type: object
+                    properties:
+                      distance: { type: [number, 'null'] }
+                      unit: { type: string, enum: [mi, km] }
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /stores/nearest:
+    get:
+      tags: [stores]
+      operationId: nearestStore
+      summary: Closest verified store to a GPS fix (pre-selects the report form)
+      security: []
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: verifiedOnly, in: query, schema: { type: boolean, default: true } }
+      responses:
+        '200':
+          description: Nearest store, distance in miles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  store:
+                    allOf:
+                      - $ref: '#/components/schemas/StoreSummary'
+                      - type: object
+                        properties:
+                          distance: { type: number }
+                  unit: { type: string, enum: [mi] }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     bearerAuth:
@@ -596,6 +706,26 @@ components:
         releaseYear: { type: [integer, 'null'] }
         genre: { type: [string, 'null'] }
         coverArtUrl: { type: [string, 'null'], format: uri }
+    Sighting:
+      type: object
+      properties:
+        sightingId: { type: string, format: uuid }
+        priceUsd: { type: number, minimum: 0 }
+        conditionGrade: { $ref: '#/components/schemas/ConditionGrade' }
+        specialAttributes: { type: [string, 'null'] }
+        storeVerified: { type: boolean }
+        status: { type: string, enum: [active, sold_out, flagged, archived] }
+        sightingTimestamp: { type: string, format: date-time }
+        archiveDate: { type: string, format: date-time }
+        reporter:
+          type: [object, 'null']
+          properties:
+            userId: { type: string, format: uuid }
+            displayName: { type: string }
+        record: { $ref: '#/components/schemas/RecordSummary' }
+        store:
+          allOf:
+            - $ref: '#/components/schemas/StoreSummary'
     CrateItem:
       type: object
       properties:
