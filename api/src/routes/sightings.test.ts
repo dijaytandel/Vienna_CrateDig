@@ -112,6 +112,7 @@ describe('POST /api/v1/sightings', () => {
     [{ ...body, storeId: 'x' }, 'storeId'],
     [{ storeId: STORE, conditionGrade: 'vg' }, 'apiSourceId'],
     [{ ...body, priceUsd: -1 }, 'priceUsd'],
+    [{ ...body, specialAttributes: Array(6).fill('x'.repeat(40)) }, 'specialAttributes'],
   ])('rejects %j', async (b, field) => {
     const res = await request(setup().app)
       .post('/api/v1/sightings')
