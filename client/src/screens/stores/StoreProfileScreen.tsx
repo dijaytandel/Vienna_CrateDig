@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ApiError } from '../../api/client';
+import { ApiError, isOfflineError } from '../../api/client';
 import { getStore, type StoreDetail } from '../../api/stores';
 import { useAuth } from '../../auth/context';
 import { useProtectedAction } from '../../auth/useProtectedAction';
 import AlbumBadge from '../../components/ui/AlbumBadge';
 import Button from '../../components/ui/Button';
+import { formatDate } from '../../lib/format';
+import { readCachedStore, rememberStore } from '../../lib/storeCache';
 import {
   CONDITION_LABEL,
   DAYS,
@@ -64,7 +66,7 @@ function Chips({ label, items }: { label: string; items: string[] }) {
   );
 }
 
-function StoreProfile({ store }: { store: StoreDetail }) {
+function StoreProfile({ store, savedAt }: { store: StoreDetail; savedAt?: string }) {
   const tel = store.phone ? telHref(store.phone) : null;
   return (
     <section className="stack">
@@ -75,10 +77,15 @@ function StoreProfile({ store }: { store: StoreDetail }) {
             {store.businessName}
             {store.isVerified && <VerifiedCheck />}
           </h1>
-          <p className={store.isOpenNow ? 'open-now' : 'muted'}>
-            {store.isOpenNow ? 'Open now' : 'Closed now'}
-            {!store.isVerified && ' · Verification pending'}
+          <p className={store.isOpenNow && !savedAt ? 'open-now' : 'muted'}>
+            {!savedAt && (store.isOpenNow ? 'Open now' : 'Closed now')}
+            {!store.isVerified && `${savedAt ? '' : ' · '}Verification pending`}
           </p>
+          {savedAt && (
+            <p className="muted" role="status">
+              Saved copy from {formatDate(savedAt)}. Hours and sightings may have changed.
+            </p>
+          )}
         </div>
       </header>
 
@@ -185,15 +192,24 @@ export default function StoreProfileScreen() {
   const [result, setResult] = useState<{
     key: string;
     store?: StoreDetail;
+    savedAt?: string;
     error?: ApiError;
   } | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     getStore(id, controller.signal).then(
-      (store) => setResult({ key, store }),
+      (store) => {
+        rememberStore(store);
+        setResult({ key, store });
+      },
       (err: unknown) => {
         if (controller.signal.aborted) return;
+        const cached = isOfflineError(err) ? readCachedStore(id) : null;
+        if (cached) {
+          setResult({ key, store: cached.store, savedAt: cached.savedAt });
+          return;
+        }
         setResult({
           key,
           error:
@@ -205,7 +221,7 @@ export default function StoreProfileScreen() {
   }, [id, key]);
 
   const current = result?.key === key ? result : null;
-  if (current?.store) return <StoreProfile store={current.store} />;
+  if (current?.store) return <StoreProfile store={current.store} savedAt={current.savedAt} />;
 
   return (
     <section className="stack">

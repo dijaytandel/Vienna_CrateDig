@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { errorText } from '../../api/client';
 import { acquireCrateItem, type CrateItem } from '../../api/crate';
+import { acquireItem } from '../../offline/crateWrites';
 import { getRecord } from '../../api/records';
 import { useAuth } from '../../auth/context';
 import Button from '../../components/ui/Button';
@@ -27,7 +28,7 @@ export default function AcquireModal({
   onDone: (outcome: AcquireOutcome) => void;
   acquire?: typeof acquireCrateItem;
 }) {
-  const { preferences } = useAuth();
+  const { preferences, session } = useAuth();
   const unit = preferences?.distanceUnit ?? 'mi';
   const { origin, locating } = useCurrentOrigin();
   const { data, loading } = useAsync(
@@ -68,13 +69,20 @@ export default function AcquireModal({
     setError(null);
     const storeId = choice === ELSEWHERE ? null : choice;
     try {
-      const res = await acquire(item.crateItemId, { storeId, purchasePriceUsd: parsed });
-      const store = stores.find((s) => s.store.storeId === storeId)?.store.businessName;
+      const store = stores.find((s) => s.store.storeId === storeId)?.store ?? null;
+      const res = await acquireItem(
+        session?.user.id ?? null,
+        item,
+        { storeId, purchasePriceUsd: parsed },
+        store && { storeId: store.storeId, businessName: store.businessName },
+        acquire,
+      );
+      const moved = store
+        ? `Moved to Collection — marked sold out at ${store.businessName}.`
+        : 'Moved to Collection.';
       onDone({
         item: res.item,
-        message: store
-          ? `Moved to Collection — marked sold out at ${store}.`
-          : 'Moved to Collection.',
+        message: res.queued ? `${moved} It will sync when you're back online.` : moved,
       });
     } catch (err) {
       setError(errorText(err));

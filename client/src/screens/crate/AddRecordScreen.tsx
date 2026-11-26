@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError, errorText } from '../../api/client';
 import type { CatalogResult } from '../../api/catalog';
 import CatalogResultButton from '../../components/CatalogResultButton';
-import { addCrateItem, type ListType } from '../../api/crate';
+import type { ListType } from '../../api/crate';
 import AlbumBadge from '../../components/ui/AlbumBadge';
 import Button from '../../components/ui/Button';
 import { PillGroup } from '../../components/ui/Pill';
@@ -12,7 +12,7 @@ import { useCatalogSearch } from '../../lib/useCatalogSearch';
 import { emptyFields, type FieldValues } from './fields';
 import RecordFields from './RecordFields';
 import { useAuth } from '../../auth/context';
-import { cacheCrateItem } from '../../lib/crateCache';
+import { addItem } from '../../offline/crateWrites';
 
 const LISTS = [
   { value: 'collection', label: 'Collection' },
@@ -43,7 +43,8 @@ export default function AddRecordScreen() {
     setSaving(true);
     setError(null);
     try {
-      const added = await addCrateItem(
+      await addItem(
+        session?.user.id ?? null,
         {
           apiSourceId: selected.apiSourceId,
           listType,
@@ -53,6 +54,7 @@ export default function AddRecordScreen() {
           userNotes: fields.userNotes.trim() || null,
           force,
         },
+        { ...selected, recordId: '' },
         force ? `${key.slice(0, -1)}f` : key,
       );
       try {
@@ -60,7 +62,6 @@ export default function AddRecordScreen() {
       } catch {
         // best-effort
       }
-      if (session) cacheCrateItem(session.user.id, added);
       navigate('/crate', { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.code === 'ALREADY_OWNED') setDuplicate(true);
