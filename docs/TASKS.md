@@ -417,4 +417,3 @@ Prototype 2 (a 20-screen walkthrough) matches the site-map routes, but it differ
 | P-5 | Report store dropdown is "nearest first" but nothing is pre-selected | Nearest store **auto-selected** when GPS is allowed; ZIP fallback otherwise | T-23 |
 | P-6 | Login screen lists demo accounts and `password123` | Demo accounts live only in the dev seed; nothing about credentials appears in the UI | T-09, T-11 |
 | P-7 | Crate item screen shows no acquire flow in the walkthrough | Want List items show **Mark as acquired** → acquire store modal | T-18, T-20 |
-| P-8 | Sighting/store cards show distance in mi; no km option outside Profile | Keep mi default; km preference applies everywhere distances show | T-12, T-24, T-36 |
