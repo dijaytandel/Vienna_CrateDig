@@ -122,6 +122,7 @@ export default function StoresScreen() {
         <label className="field">
           {origin ? 'Search near a different ZIP' : 'Enter a ZIP code to find stores near you'}
           <input
+            className="input"
             inputMode="numeric"
             autoComplete="postal-code"
             maxLength={5}

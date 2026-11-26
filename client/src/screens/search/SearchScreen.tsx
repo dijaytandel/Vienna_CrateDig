@@ -105,6 +105,7 @@ export default function SearchScreen() {
       <label className="field">
         Artist, album or genre
         <input
+          className="input"
           type="search"
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -120,7 +121,7 @@ export default function SearchScreen() {
       />
       <label className="field">
         Genre
-        <select value={genre} onChange={(e) => setParam('genre', e.target.value)}>
+        <select className="input" value={genre} onChange={(e) => setParam('genre', e.target.value)}>
           <option value="">All genres</option>
           {genreOptions.map((g) => (
             <option key={g} value={g}>
@@ -137,6 +138,7 @@ export default function SearchScreen() {
               ? 'Search near a different ZIP'
               : 'Enter your 5-digit ZIP code to search nearby'}
             <input
+              className="input"
               inputMode="numeric"
               autoComplete="postal-code"
               maxLength={5}

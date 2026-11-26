@@ -126,12 +126,14 @@ function StoreForm({ store }: { store: StoreDetail }) {
               {h && (
                 <>
                   <input
+                    className="input"
                     type="time"
                     aria-label={`${label} opens`}
                     value={h.open}
                     onChange={(e) => setDay(key, { ...h, open: e.target.value })}
                   />
                   <input
+                    className="input"
                     type="time"
                     aria-label={`${label} closes`}
                     value={h.close}
@@ -148,6 +150,7 @@ function StoreForm({ store }: { store: StoreDetail }) {
       <div className="field">
         <label htmlFor="store-phone">Phone</label>
         <input
+          className="input"
           id="store-phone"
           type="tel"
           inputMode="tel"
@@ -170,6 +173,7 @@ function StoreForm({ store }: { store: StoreDetail }) {
       <div className="field">
         <label htmlFor="store-website">Website</label>
         <input
+          className="input"
           id="store-website"
           type="url"
           inputMode="url"

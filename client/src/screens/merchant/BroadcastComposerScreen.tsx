@@ -173,6 +173,7 @@ export default function BroadcastComposerScreen() {
         <label className="field">
           Photo link (optional)
           <input
+            className="input"
             type="url"
             inputMode="url"
             value={photoUrl}
@@ -217,6 +218,7 @@ export default function BroadcastComposerScreen() {
             <label className="field">
               Find a record to feature
               <input
+                className="input"
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
