@@ -22,6 +22,8 @@ tags:
     description: My Crate (Collection and Want List)
   - name: sightings
     description: Community sightings of records at stores
+  - name: search
+    description: Radius and keyword search over active sightings
 paths:
   /health:
     get:
@@ -280,6 +282,60 @@ paths:
                                 businessName: { type: string }
         '404':
           $ref: '#/components/responses/NotFound'
+  /search:
+    get:
+      tags: [search]
+      operationId: searchSightings
+      summary: Active sightings near a location, nearest first then newest
+      description: >-
+        Every word of `q` must appear in the artist, album or genre (case- and
+        accent-insensitive). Location is `lat`+`lng`, else `zip`.
+      security: []
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: genre, in: query, schema: { type: string, maxLength: 60 } }
+        - { name: radius, in: query, schema: { type: integer, enum: [5, 10, 25], default: 10 } }
+        - { name: unit, in: query, schema: { type: string, enum: [mi, km], default: mi } }
+        - { name: lat, in: query, schema: { type: number } }
+        - { name: lng, in: query, schema: { type: number } }
+        - { name: zip, in: query, schema: { type: string, pattern: '^\\d{5}$' } }
+      responses:
+        '200':
+          description: Matching sightings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  origin:
+                    type: object
+                    properties:
+                      lat: { type: number }
+                      lng: { type: number }
+                      source: { type: string, enum: [coordinates, zip] }
+                  unit: { type: string, enum: [mi, km] }
+                  radius: { type: integer }
+                  genres:
+                    type: array
+                    description: Genres among the keyword matches, before the genre filter
+                    items: { type: string }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/SearchResult' }
+        '400':
+          description: VALIDATION_ERROR, or LOCATION_REQUIRED when neither lat/lng nor zip is given
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: ZIP_NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
   /crate:
     get:
       tags: [crate]
@@ -742,6 +798,32 @@ components:
             storeId: { type: string, format: uuid }
             businessName: { type: string }
         record: { $ref: '#/components/schemas/RecordSummary' }
+    SearchResult:
+      type: object
+      properties:
+        sightingId: { type: string, format: uuid }
+        priceUsd: { type: number }
+        conditionGrade: { $ref: '#/components/schemas/ConditionGrade' }
+        specialAttributes: { type: [string, 'null'] }
+        storeVerified: { type: boolean }
+        sightingTimestamp: { type: string, format: date-time }
+        distance: { type: number }
+        record:
+          type: object
+          properties:
+            recordId: { type: string, format: uuid }
+            artistName: { type: string }
+            albumTitle: { type: string }
+            genre: { type: [string, 'null'] }
+            coverArtUrl: { type: [string, 'null'] }
+        store:
+          type: object
+          properties:
+            storeId: { type: string, format: uuid }
+            businessName: { type: string }
+            geoLat: { type: number }
+            geoLng: { type: number }
+            isVerified: { type: boolean }
     Error:
       type: object
       required: [error]
