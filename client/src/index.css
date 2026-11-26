@@ -39,6 +39,9 @@ a {
 }
 
 .brand {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   color: var(--color-text);
   font-weight: 700;
   font-size: 1.25rem;
