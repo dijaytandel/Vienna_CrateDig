@@ -37,6 +37,7 @@ Vite only exposes variables prefixed `VITE_`, and they end up in the public bund
 |---|---|
 | `VITE_SUPABASE_URL` | Supabase project URL, for Supabase Auth. If unset, the app runs in guest-only mode. |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anon (public) key. Never the service-role key. |
+| `VITE_API_URL` | API base URL including `/api/v1`, e.g. `https://api.example.com/api/v1`. Defaults to `/api/v1` on the same origin; `vite` and `vite preview` proxy `/api` to `http://localhost:3000` (override with `API_PROXY_TARGET`). The API's `CORS_ORIGIN` must include the client origin. |
 
 ## 3. Deploy steps
 

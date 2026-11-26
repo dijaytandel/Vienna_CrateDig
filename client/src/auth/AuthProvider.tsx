@@ -23,7 +23,7 @@ async function loadAccount(client: SupabaseClient, session: Session): Promise<Ac
   const { data } = await client
     .from('profiles')
     .select(
-      'display_name, user_role, default_zip, default_radius_miles, distance_unit, genre_preferences',
+      'display_name, user_role, default_zip, default_radius_miles, distance_unit, genre_preferences, favorite_store_ids',
     )
     .eq('user_id', session.user.id)
     .maybeSingle();
@@ -41,6 +41,7 @@ async function loadAccount(client: SupabaseClient, session: Session): Promise<Ac
       radiusMiles: data?.default_radius_miles ?? DEFAULT_PREFERENCES.radiusMiles,
       distanceUnit: data?.distance_unit ?? DEFAULT_PREFERENCES.distanceUnit,
       genres: data?.genre_preferences ?? DEFAULT_PREFERENCES.genres,
+      favoriteStoreIds: data?.favorite_store_ids ?? DEFAULT_PREFERENCES.favoriteStoreIds,
     },
   };
 }
@@ -57,6 +58,7 @@ export default function AuthProvider({
   const [status, setStatus] = useState<AuthState['status']>(client ? 'loading' : 'ready');
   // Bumped on every auth change so a slow profile lookup can't overwrite a newer state.
   const generation = useRef(0);
+  const userId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!client) return;
@@ -65,6 +67,7 @@ export default function AuthProvider({
       const mine = ++generation.current;
       const nextAccount = next ? await loadAccount(client, next) : null;
       if (!current || mine !== generation.current) return;
+      userId.current = next?.user.id ?? null;
       setSession(next);
       setAccount(nextAccount);
       setStatus('ready');
@@ -111,9 +114,26 @@ export default function AuthProvider({
         const { error } = await client.auth.signOut();
         if (error) return { error: 'Could not sign out. Check your connection and try again.' };
         generation.current++;
+        userId.current = null;
         setSession(null);
         setAccount(null);
         setStatus('ready');
+        return { error: null };
+      },
+      async toggleFavoriteStore(storeId) {
+        if (!session || !account) return { error: 'Log in to save favorite stores.' };
+        const current = account.preferences.favoriteStoreIds;
+        const next = current.includes(storeId)
+          ? current.filter((id) => id !== storeId)
+          : [...current, storeId];
+        const { error } = await client
+          .from('profiles')
+          .update({ favorite_store_ids: next })
+          .eq('user_id', session.user.id);
+        if (error) return { error: 'Could not update your favorite stores. Try again.' };
+        // The user signed out or switched accounts while the write was in flight.
+        if (userId.current !== session.user.id) return { error: null };
+        setAccount((a) => a && { ...a, preferences: { ...a.preferences, favoriteStoreIds: next } });
         return { error: null };
       },
     };

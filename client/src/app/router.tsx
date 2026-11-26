@@ -8,6 +8,8 @@ import DiscoverScreen from '../screens/DiscoverScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SignupScreen from '../screens/SignupScreen';
+import StoreProfileScreen from '../screens/stores/StoreProfileScreen';
+import StoresScreen from '../screens/stores/StoresScreen';
 import WelcomeScreen from '../screens/WelcomeScreen';
 
 const SCREENS: Record<string, () => React.JSX.Element> = {
@@ -16,6 +18,8 @@ const SCREENS: Record<string, () => React.JSX.Element> = {
   '/signup': SignupScreen,
   '/profile': ProfileScreen,
   '/welcome': WelcomeScreen,
+  '/stores': StoresScreen,
+  '/stores/:id': StoreProfileScreen,
 };
 
 function screenElement(screen: ScreenRoute) {

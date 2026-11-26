@@ -15,9 +15,13 @@ function mockClient(
   deferProfile = false,
 ) {
   let resolveProfile: (p: Record<string, unknown>) => void = () => {};
+  let emit: (event: string, s: Session | null) => void = () => {};
   const auth = {
     getSession: vi.fn(async () => ({ data: { session: stored } })),
-    onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+    onAuthStateChange: vi.fn((cb: (event: string, s: Session | null) => void) => {
+      emit = cb;
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
+    }),
     signInWithPassword: vi.fn(async () => ({ error: { message: 'Invalid login credentials' } })),
     signUp: vi.fn(async () => ({
       data: { session: null },
@@ -32,10 +36,23 @@ function mockClient(
         })
       : Promise.resolve({ data: profile }),
   );
-  const client = { auth, from: () => ({ select: () => ({ eq: () => ({ maybeSingle }) }) }) };
+  let finishUpdate: () => void = () => {};
+  const updateEq = vi.fn(
+    () =>
+      new Promise<{ error: null }>((resolve) => (finishUpdate = () => resolve({ error: null }))),
+  );
+  const update = vi.fn(() => ({ eq: updateEq }));
+  const client = {
+    auth,
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle }) }), update }),
+  };
   return {
     client: client as unknown as SupabaseClient,
     auth,
+    update,
+    updateEq,
+    finishUpdate: () => finishUpdate(),
+    emit: (event: string, s: Session | null) => emit(event, s),
     resolveProfile: (p: Record<string, unknown>) => resolveProfile(p),
   };
 }
@@ -75,6 +92,7 @@ describe('AuthProvider', () => {
       radiusMiles: 25,
       distanceUnit: 'km',
       genres: ['Jazz'],
+      favoriteStoreIds: [],
     });
   });
 
@@ -128,6 +146,65 @@ describe('AuthProvider', () => {
     await act(async () => resolveProfile({ display_name: 'Stale' }));
     expect(screen.getByText('guest')).toBeInTheDocument();
     expect(screen.queryByText('Stale')).toBeNull();
+  });
+
+  it('toggles a favorite store on the profile', async () => {
+    const { client, update, updateEq, finishUpdate } = mockClient(session, {
+      favorite_store_ids: ['s1'],
+    });
+    render(
+      <AuthProvider client={client}>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(state.preferences?.favoriteStoreIds).toEqual(['s1']));
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = state.toggleFavoriteStore('s2');
+    });
+    finishUpdate();
+    await act(() => pending);
+    expect(update).toHaveBeenCalledWith({ favorite_store_ids: ['s1', 's2'] });
+    expect(updateEq).toHaveBeenCalledWith('user_id', 'u1');
+    expect(state.preferences?.favoriteStoreIds).toEqual(['s1', 's2']);
+  });
+
+  it('keeps a favorite saved across a token refresh', async () => {
+    const { client, auth, emit, finishUpdate } = mockClient(session, { favorite_store_ids: [] });
+    render(
+      <AuthProvider client={client}>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(state.preferences).not.toBeNull());
+    await waitFor(() => expect(auth.onAuthStateChange).toHaveBeenCalled());
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = state.toggleFavoriteStore('s2');
+    });
+    act(() => emit('TOKEN_REFRESHED', session));
+    await act(() => new Promise((r) => setTimeout(r, 10)));
+    finishUpdate();
+    await act(() => pending);
+    expect(state.preferences?.favoriteStoreIds).toEqual(['s2']);
+  });
+
+  it('ignores a favorite write that finishes after sign-out', async () => {
+    const { client, finishUpdate } = mockClient(session, { favorite_store_ids: [] });
+    render(
+      <AuthProvider client={client}>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(state.preferences).not.toBeNull());
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = state.toggleFavoriteStore('s2');
+    });
+    await act(() => state.signOut());
+    finishUpdate();
+    await act(() => pending);
+    expect(state.preferences).toBeNull();
   });
 
   it('maps auth errors and signs out', async () => {

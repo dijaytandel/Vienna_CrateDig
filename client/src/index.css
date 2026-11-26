@@ -297,3 +297,157 @@ a:focus-visible {
   margin: 0;
   overflow-wrap: anywhere;
 }
+
+.stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stack-tight h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.zip-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.zip-form .form-error {
+  grid-column: 1 / -1;
+}
+
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.store-card,
+.sighting-card,
+.broadcast-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.broadcast-card {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.store-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+  overflow-wrap: anywhere;
+}
+
+.store-card-name {
+  font-weight: 700;
+}
+
+.store-card-distance {
+  flex: none;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.store-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+}
+
+.verified-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2em;
+  height: 1.2em;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #052e16;
+  font-size: 0.8em;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.store-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.store-header h1,
+.store-header p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.open-now {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.details a,
+.store-header a {
+  display: inline-block;
+  min-height: 44px;
+  line-height: 44px;
+  color: var(--color-accent);
+}
+
+.hours-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.hours-table th,
+.hours-table td {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  font-weight: 400;
+}
+
+.hours-table td {
+  text-align: right;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  padding: 4px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+}
