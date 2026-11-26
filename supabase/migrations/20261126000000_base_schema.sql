@@ -160,7 +160,7 @@ begin
   values (
     new.id,
     new.email,
-    coalesce(nullif(new.raw_user_meta_data ->> 'display_name', ''), split_part(new.email, '@', 1))
+    left(coalesce(nullif(btrim(new.raw_user_meta_data ->> 'display_name'), ''), split_part(new.email, '@', 1)), 60)
   );
   return new;
 end;
