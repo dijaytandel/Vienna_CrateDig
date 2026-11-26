@@ -9,9 +9,9 @@ export function useProtectedAction() {
   const navigate = useNavigate();
   const location = useLocation();
   return useCallback(
-    (action: () => void) => {
+    (action: () => void, next?: string) => {
       if (session) action();
-      else navigate(loginPath(location.pathname + location.search));
+      else navigate(loginPath(next ?? location.pathname + location.search));
     },
     [session, navigate, location.pathname, location.search],
   );
