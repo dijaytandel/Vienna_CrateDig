@@ -1,18 +1,33 @@
 import { Navigate, type RouteObject } from 'react-router-dom';
 import AppShell from './AppShell';
-import { SCREEN_ROUTES } from './routes';
+import { SCREEN_ROUTES, type ScreenRoute } from './routes';
+import RequireAuth from '../auth/RequireAuth';
 import PlaceholderScreen from '../components/PlaceholderScreen';
 import NotFoundScreen from '../components/NotFoundScreen';
+import LoginScreen from '../screens/LoginScreen';
+import WelcomeScreen from '../screens/WelcomeScreen';
+
+const SCREENS: Record<string, () => React.JSX.Element> = {
+  '/login': LoginScreen,
+  '/welcome': WelcomeScreen,
+};
+
+function screenElement(screen: ScreenRoute) {
+  const Screen = SCREENS[screen.path];
+  const element = Screen ? <Screen /> : <PlaceholderScreen screen={screen} />;
+  return screen.access === 'guest' ? (
+    element
+  ) : (
+    <RequireAuth role={screen.access}>{element}</RequireAuth>
+  );
+}
 
 export const APP_ROUTES: RouteObject[] = [
   {
     element: <AppShell />,
     children: [
       { index: true, element: <Navigate to="/discover" replace /> },
-      ...SCREEN_ROUTES.map((screen) => ({
-        path: screen.path,
-        element: <PlaceholderScreen screen={screen} />,
-      })),
+      ...SCREEN_ROUTES.map((screen) => ({ path: screen.path, element: screenElement(screen) })),
       { path: '*', element: <NotFoundScreen /> },
     ],
   },
