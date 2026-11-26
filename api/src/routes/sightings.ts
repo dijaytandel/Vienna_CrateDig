@@ -8,7 +8,7 @@ import { HttpError } from '../middleware/httpError.js';
 import type { SightingRepository } from '../sightings/repository.js';
 import { boundingBox, distanceMiles, toUnit } from '../stores/geo.js';
 import type { StoreRepository } from '../stores/repository.js';
-import { optional, originFields, resolveOrigin } from './origin.js';
+import { optional, originFields, resolveOptionalOrigin } from './origin.js';
 import { parse } from './parse.js';
 
 export const DAILY_SIGHTING_LIMIT = 20;
@@ -60,7 +60,7 @@ export function sightingsRouter(
     const { id } = parse(idParam, req.params);
     const q = parse(detailQuery, req.query);
     const db = repo();
-    const origin = await resolveOrigin(q, (zip) => db.stores.zipCentroid(zip));
+    const origin = await resolveOptionalOrigin(q, (zip) => db.stores.zipCentroid(zip));
     const s = await db.sightings.get(id);
     if (!s) throw new HttpError(404, 'NOT_FOUND', 'No such sighting');
     const distance = origin

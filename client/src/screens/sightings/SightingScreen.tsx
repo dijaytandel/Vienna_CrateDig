@@ -29,7 +29,7 @@ export default function SightingScreen() {
   if (!s) {
     return sighting.error ? (
       <section className="stack">
-        <h1>Sighting</h1>
+        <h1>Sighting Details</h1>
         <p role="alert" className="form-error">
           {sighting.error}
         </p>

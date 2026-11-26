@@ -93,7 +93,7 @@ begin
   set list_type = 'collection',
       acquired_at = now(),
       purchased_store_id = p_store,
-      purchase_price_usd = coalesce(p_price, purchase_price_usd)
+      purchase_price_usd = p_price
   where crate_item_id = p_item;
 
   if p_store is not null then
