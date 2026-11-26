@@ -47,7 +47,8 @@ async function loadAccount(client: SupabaseClient, session: Session): Promise<Ac
     },
     preferences: {
       email: session.user.email ?? null,
-      defaultZip: data?.default_zip ?? metaZip ?? DEFAULT_PREFERENCES.defaultZip,
+      // A saved profile row wins even when its ZIP was cleared; signup metadata only covers a failed read.
+      defaultZip: data ? data.default_zip : (metaZip ?? DEFAULT_PREFERENCES.defaultZip),
       radiusMiles: data?.default_radius_miles ?? DEFAULT_PREFERENCES.radiusMiles,
       distanceUnit: data?.distance_unit ?? DEFAULT_PREFERENCES.distanceUnit,
       genres: data?.genre_preferences ?? DEFAULT_PREFERENCES.genres,
