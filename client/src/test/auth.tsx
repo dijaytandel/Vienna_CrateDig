@@ -1,11 +1,14 @@
 import { useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { AuthContext, GUEST, type AuthState } from '../auth/context';
+import { AuthContext, DEFAULT_PREFERENCES, GUEST, type AuthState } from '../auth/context';
 import type { AvatarUser } from '../components/AvatarMenu';
 
 const fakeSession = { user: { id: 'u1' } } as Session;
 
-/** In-memory auth for tests; `password` is the only accepted password. */
+/**
+ * In-memory auth for tests: `password` is the only accepted login password and
+ * `taken@x.test` is already registered.
+ */
 export function FakeAuth({
   children,
   user = null,
@@ -14,14 +17,27 @@ export function FakeAuth({
   user?: AvatarUser | null;
 }) {
   const [current, setCurrent] = useState(user);
+  const [zip, setZip] = useState<string | null>('60601');
   const value: AuthState = {
     ...GUEST,
     session: current ? fakeSession : null,
     user: current,
+    preferences: current
+      ? { ...DEFAULT_PREFERENCES, email: 'd@x.test', defaultZip: zip, genres: ['Jazz', 'Soul'] }
+      : null,
     async signIn(_email, password) {
       if (password !== 'password') return { error: 'Email or password is incorrect.' };
       setCurrent({ displayName: 'Dana Diggs', role: 'collector' });
       return { error: null };
+    },
+    async signUp({ displayName, email, zip: newZip }) {
+      if (email === 'taken@x.test') return { error: 'An account with this email already exists.' };
+      setZip(newZip ?? null);
+      setCurrent({ displayName, role: 'collector' });
+      return { error: null };
+    },
+    async signOut() {
+      setCurrent(null);
     },
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

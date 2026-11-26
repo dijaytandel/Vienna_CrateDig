@@ -4,11 +4,17 @@ import { SCREEN_ROUTES, type ScreenRoute } from './routes';
 import RequireAuth from '../auth/RequireAuth';
 import PlaceholderScreen from '../components/PlaceholderScreen';
 import NotFoundScreen from '../components/NotFoundScreen';
+import DiscoverScreen from '../screens/DiscoverScreen';
 import LoginScreen from '../screens/LoginScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import SignupScreen from '../screens/SignupScreen';
 import WelcomeScreen from '../screens/WelcomeScreen';
 
 const SCREENS: Record<string, () => React.JSX.Element> = {
+  '/discover': DiscoverScreen,
   '/login': LoginScreen,
+  '/signup': SignupScreen,
+  '/profile': ProfileScreen,
   '/welcome': WelcomeScreen,
 };
 
