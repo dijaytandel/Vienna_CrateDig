@@ -401,3 +401,20 @@ Routes refer to [`SITEMAP.md`](SITEMAP.md). Task IDs (`T-xx`) are used in branch
 - Lighthouse accessibility is at least 90 on `/discover`, `/search`, `/report`, `/stores` and `/crate`.
 - Primary actions sit in the bottom half of the screen; text meets WCAG 2.1 AA on the navy background.
 - No screen downloads images other than optional external cover/photo URLs; initial JS payload is at most 250 kB gzipped.
+
+---
+
+## Appendix — Prototype 2 conformance
+
+Prototype 2 (a 20-screen walkthrough) matches the site-map routes, but it differs from Specification #3 in the places below. **Spec #3 wins** (owner decision). Each fix belongs to the task listed and is tested by that task's acceptance criteria.
+
+| # | Prototype 2 behaviour | Required (Spec #3) | Task |
+|---|---|---|---|
+| P-1 | Vienna seed data: real Vienna stores, € prices, +43 phones, 4-digit postcodes (`1070`), "Find vinyl in Vienna's…" copy | Generic U.S. metro seed, USD (`$28.00`), U.S. phones, 5-digit ZIP validation, U.S. copy | T-09, T-11, T-36 |
+| P-2 | Walkthrough starts at `/welcome`; no Discover screen shown | `/` and app launch go to `/discover`; `/welcome` is optional | T-08, T-28 |
+| P-3 | Merchant sighting queue has only ✓ Confirm and Mark sold (copy says "flag what's wrong") | Add a **Flag** action (`status = flagged`) | T-32, T-33 |
+| P-4 | Genres, payment methods and specialty tags are comma-separated text fields | Typing-pill `TagInput` | T-07, T-34, T-36 |
+| P-5 | Report store dropdown is "nearest first" but nothing is pre-selected | Nearest store **auto-selected** when GPS is allowed; ZIP fallback otherwise | T-23 |
+| P-6 | Login screen lists demo accounts and `password123` | Demo accounts live only in the dev seed; nothing about credentials appears in the UI | T-09, T-11 |
+| P-7 | Crate item screen shows no acquire flow in the walkthrough | Want List items show **Mark as acquired** → acquire store modal | T-18, T-20 |
+| P-8 | Sighting/store cards show distance in mi; no km option outside Profile | Keep mi default; km preference applies everywhere distances show | T-12, T-24, T-36 |
