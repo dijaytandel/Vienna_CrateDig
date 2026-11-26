@@ -35,4 +35,11 @@ describe('router', () => {
     const nav = await screen.findByRole('navigation', { name: 'Primary' });
     expect(nav.querySelectorAll('a')).toHaveLength(5);
   });
+
+  it('highlights the active tab', async () => {
+    renderAt('/stores/abc');
+    const stores = await screen.findByRole('link', { name: /Stores/ });
+    expect(stores).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: /Search/ })).not.toHaveAttribute('aria-current');
+  });
 });
