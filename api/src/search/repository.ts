@@ -3,7 +3,7 @@ import type { ConditionGrade } from '../sightings/repository.js';
 
 export interface SearchHit {
   sightingId: string;
-  priceUsd: number;
+  priceUsd: number | null;
   conditionGrade: ConditionGrade;
   specialAttributes: string | null;
   storeVerified: boolean;
@@ -43,7 +43,7 @@ export interface SearchRepository {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const toHit = (r: any): SearchHit => ({
   sightingId: r.sighting_id,
-  priceUsd: Number(r.price_usd),
+  priceUsd: r.price_usd == null ? null : Number(r.price_usd),
   conditionGrade: r.condition_grade,
   specialAttributes: r.special_attributes,
   storeVerified: r.store_verified,

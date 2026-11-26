@@ -817,7 +817,7 @@ components:
       type: object
       properties:
         sightingId: { type: string, format: uuid }
-        priceUsd: { type: number }
+        priceUsd: { type: [number, 'null'] }
         conditionGrade: { $ref: '#/components/schemas/ConditionGrade' }
         specialAttributes: { type: [string, 'null'] }
         storeVerified: { type: boolean }

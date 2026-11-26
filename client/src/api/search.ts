@@ -5,7 +5,7 @@ import type { Origin, Radius, Unit } from './stores';
 
 export interface SearchResult {
   sightingId: string;
-  priceUsd: number;
+  priceUsd: number | null;
   conditionGrade: ConditionGrade;
   specialAttributes: string | null;
   storeVerified: boolean;
