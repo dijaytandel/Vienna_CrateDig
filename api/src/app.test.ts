@@ -36,4 +36,13 @@ describe('api', () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INVALID_JSON');
   });
+
+  it('oversized JSON returns 413 in the error shape', async () => {
+    const res = await request(createApp())
+      .post('/api/v1/health')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ x: 'a'.repeat(200_000) }));
+    expect(res.status).toBe(413);
+    expect(res.body.error.code).toBe('ENTITY_TOO_LARGE');
+  });
 });
