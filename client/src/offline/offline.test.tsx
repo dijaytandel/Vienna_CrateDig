@@ -215,6 +215,19 @@ describe('offline crate writes', () => {
     expect(readQueue()).toEqual([expect.objectContaining({ lastError: 'Only Want List' })]);
   });
 
+  it('keeps a write pending when the session token has expired', async () => {
+    enqueue({ kind: 'delete_crate_item', id: ITEM, idempotencyKey: 'e1' }, userId);
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: { code: 'UNAUTHORIZED', message: 'Expired' } }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    expect(await flushQueue(userId)).toEqual({ sent: 0, failed: 1 });
+    expect(readQueue()).toEqual([expect.objectContaining({ attempts: 1 })]);
+    expect(readQueue()[0]!.lastError).toBeUndefined();
+  });
+
   it("only replays the signed-in account's writes", async () => {
     enqueue({ kind: 'delete_crate_item', id: ITEM, idempotencyKey: 'other' }, 'someone-else');
     expect(await flushQueue(userId)).toEqual({ sent: 0, failed: 0 });

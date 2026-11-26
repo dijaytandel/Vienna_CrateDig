@@ -87,7 +87,8 @@ let flushing: Promise<{ sent: number; failed: number }> | null = null;
 
 /**
  * Sends queued writes oldest first. Stops at the first network failure; a
- * rejected write (4xx) is kept with its error so the user can see and discard it.
+ * rejected write (4xx) is kept with its error so the user can see and discard it;
+ * a 401 stays pending until the refreshed session flushes again.
  */
 export function flushQueue(owner: string) {
   flushing ??= (async () => {
@@ -106,7 +107,9 @@ export function flushQueue(owner: string) {
           sent++;
           continue;
         }
-        const retryable = err instanceof ApiError && (err.status >= 500 || err.status === 429);
+        const retryable =
+          err instanceof ApiError &&
+          (err.status >= 500 || err.status === 429 || err.status === 401);
         writeQueue(
           readQueue().map((e) =>
             e.action.idempotencyKey === entry.action.idempotencyKey
