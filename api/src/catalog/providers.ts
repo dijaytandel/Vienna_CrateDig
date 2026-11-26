@@ -49,6 +49,11 @@ const discogsCredit = (artists: { name: string; join?: string }[]) =>
     })
     .join('');
 
+/** MusicBrainz indexes sized pressings ("12\" Vinyl") separately from generic "Vinyl". */
+const MB_VINYL = ['vinyl', '12\\" vinyl', '7\\" vinyl', '10\\" vinyl']
+  .map((f) => `format:"${f}"`)
+  .join(' OR ');
+
 const escapeLucene = (q: string) => q.replace(/([+\-&|!(){}[\]^"~*?:\\/])/g, '\\$1');
 
 export function discogsProvider(token: string | undefined, fetchFn: FetchFn = fetch) {
@@ -135,7 +140,7 @@ export function musicBrainzProvider(fetchFn: FetchFn = fetch) {
     name,
     async search(query, limit) {
       const params = new URLSearchParams({
-        query: `(${escapeLucene(query)}) AND format:vinyl`,
+        query: `(${escapeLucene(query)}) AND (${MB_VINYL})`,
         fmt: 'json',
         limit: String(limit),
       });
