@@ -24,6 +24,10 @@ tags:
     description: Community sightings of records at stores
   - name: search
     description: Radius and keyword search over active sightings
+  - name: feed
+    description: Discover feed of sightings and broadcasts
+  - name: broadcasts
+    description: Store stock-arrival broadcasts
 paths:
   /health:
     get:
@@ -334,6 +338,80 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+  /feed:
+    get:
+      tags: [feed]
+      operationId: getFeed
+      summary: Discover feed of active sightings and broadcasts near a location
+      description: >-
+        Items from the last 180 days within the radius, newest first, 20 per page.
+        Works without auth; with a valid bearer token, items matching the user's genre
+        preferences or favorite stores have `isForYou: true`.
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - { name: radius, in: query, schema: { type: integer, enum: [5, 10, 25], default: 10 } }
+        - { name: unit, in: query, schema: { type: string, enum: [mi, km], default: mi } }
+        - { name: lat, in: query, schema: { type: number } }
+        - { name: lng, in: query, schema: { type: number } }
+        - { name: zip, in: query, schema: { type: string, pattern: '^\\d{5}$' } }
+        - {
+            name: cursor,
+            in: query,
+            description: '`nextCursor` from the previous page',
+            schema: { type: string },
+          }
+      responses:
+        '200':
+          description: One page of the feed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unit: { type: string, enum: [mi, km] }
+                  radius: { type: integer }
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/FeedItem' }
+                  nextCursor: { type: [string, 'null'] }
+        '400':
+          description: VALIDATION_ERROR, or LOCATION_REQUIRED when neither lat/lng nor zip is given
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: ZIP_NOT_FOUND
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+  /broadcasts/{id}:
+    get:
+      tags: [broadcasts]
+      operationId: getBroadcast
+      summary: A store broadcast with its store and featured records
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: unit, in: query, schema: { type: string, enum: [mi, km], default: mi } }
+        - { name: lat, in: query, schema: { type: number } }
+        - { name: lng, in: query, schema: { type: number } }
+        - { name: zip, in: query, schema: { type: string, pattern: '^\\d{5}$' } }
+      responses:
+        '200':
+          description: The broadcast; `distance` is null without a known location
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BroadcastDetail' }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/DatabaseUnavailable'
   /crate:
@@ -839,6 +917,44 @@ components:
             geoLat: { type: number }
             geoLng: { type: number }
             isVerified: { type: boolean }
+    FeedStore:
+      type: object
+      required: [storeId, businessName, isVerified]
+      properties:
+        storeId: { type: string, format: uuid }
+        businessName: { type: string }
+        isVerified: { type: boolean }
+    FeedItem:
+      type: object
+      required: [type, id, postedAt, distance, isForYou, store]
+      properties:
+        type: { type: string, enum: [sighting, broadcast] }
+        id: { type: string, format: uuid }
+        postedAt: { type: string, format: date-time }
+        distance: { type: number }
+        isForYou: { type: boolean }
+        store: { $ref: '#/components/schemas/FeedStore' }
+        priceUsd: { type: [number, 'null'], description: sighting only }
+        conditionGrade: { $ref: '#/components/schemas/ConditionGrade' }
+        specialAttributes: { type: [string, 'null'] }
+        storeVerified: { type: boolean }
+        record: { $ref: '#/components/schemas/RecordSummary' }
+        arrivalSummary: { type: string, description: broadcast only }
+        photoUrl: { type: [string, 'null'] }
+        featuredIds: { type: array, items: { type: string, format: uuid } }
+    BroadcastDetail:
+      type: object
+      properties:
+        broadcastId: { type: string, format: uuid }
+        arrivalSummary: { type: string }
+        photoUrl: { type: [string, 'null'] }
+        postedAt: { type: string, format: date-time }
+        unit: { type: string, enum: [mi, km] }
+        distance: { type: [number, 'null'] }
+        store: { $ref: '#/components/schemas/StoreSummary' }
+        featured:
+          type: array
+          items: { $ref: '#/components/schemas/RecordSummary' }
     Error:
       type: object
       required: [error]

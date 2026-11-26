@@ -44,3 +44,10 @@ export function requireVerifiedManager(auth?: AuthService): RequestHandler[] {
     },
   ];
 }
+
+/** The caller when a valid bearer token is sent; guests and expired tokens get null. */
+export async function optionalUser(req: Request, auth?: AuthService): Promise<AuthUser | null> {
+  const token = bearer(req);
+  if (!token || !auth) return null;
+  return auth.userFromToken(token);
+}

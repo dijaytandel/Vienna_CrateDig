@@ -11,6 +11,8 @@ import { notFound } from './middleware/notFound.js';
 import { supabaseCrate, type CrateRepository } from './crate/repository.js';
 import { supabaseRecords, type RecordRepository } from './records/repository.js';
 import { catalogRouter } from './routes/catalog.js';
+import { broadcastsRouter, feedRouter } from './routes/feed.js';
+import { supabaseFeed, type FeedRepository } from './feed/repository.js';
 import { crateRouter } from './routes/crate.js';
 import { recordsRouter } from './routes/records.js';
 import { searchRouter } from './routes/search.js';
@@ -30,6 +32,7 @@ export interface AppOptions {
   recordDetails?: RecordRepository;
   sightings?: SightingRepository;
   search?: SearchRepository;
+  feed?: FeedRepository;
   now?: () => Date;
   configure?: (v1: Router, auth?: AuthService) => void;
 }
@@ -68,6 +71,7 @@ export function createApp({
   recordDetails = withDb(supabaseRecords)(),
   sightings = withDb(supabaseSightings)(),
   search = withDb(supabaseSearch)(),
+  feed = withDb(supabaseFeed)(),
   now,
   configure,
 }: AppOptions = {}) {
@@ -89,6 +93,8 @@ export function createApp({
   v1.use('/crate', crateRouter(crate, catalog, records, auth));
   v1.use('/records', recordsRouter(recordDetails, stores));
   v1.use('/search', searchRouter(search, stores));
+  v1.use('/feed', feedRouter(feed, stores, auth));
+  v1.use('/broadcasts', broadcastsRouter(feed, stores));
   configure?.(v1, auth);
   app.use('/api/v1', v1);
 
