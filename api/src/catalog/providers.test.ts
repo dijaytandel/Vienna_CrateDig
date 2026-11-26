@@ -37,6 +37,7 @@ describe('discogsProvider', () => {
     ]);
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toContain('q=nevermind');
+    expect(url).toContain('format=Vinyl');
     expect(init.headers.Authorization).toBe('Discogs token=tok');
   });
 
@@ -47,6 +48,25 @@ describe('discogsProvider', () => {
     await expect(discogsProvider(undefined, json({})).search('abc', 20)).rejects.toThrow(
       UpstreamError,
     );
+  });
+
+  it('keeps every credited artist on a direct lookup', async () => {
+    const fetchFn = json({
+      title: 'Watch The Throne',
+      artists: [
+        { name: 'Jay-Z', join: '&' },
+        { name: 'Kanye West (2)', join: ',' },
+        { name: 'Frank Ocean', join: '' },
+      ],
+    });
+    const r = await discogsProvider('tok', fetchFn).getById('discogs:3109130');
+    expect(r?.artistName).toBe('Jay-Z & Kanye West, Frank Ocean');
+  });
+
+  it('rejects zero-padded ids', async () => {
+    const fetchFn = json({});
+    expect(await discogsProvider('tok', fetchFn).getById('discogs:0249504')).toBeNull();
+    expect(fetchFn).not.toHaveBeenCalled();
   });
 
   it('ignores ids from other providers', async () => {
@@ -83,6 +103,13 @@ describe('musicBrainzProvider', () => {
         coverArtUrl: null,
       },
     ]);
+  });
+
+  it('limits search to vinyl and escapes query syntax', async () => {
+    const fetchFn = json({ releases: [] });
+    await musicBrainzProvider(fetchFn).search('ac/dc: back', 20);
+    const query = new URL(fetchFn.mock.calls[0][0]).searchParams.get('query');
+    expect(query).toBe('(ac\\/dc\\: back) AND format:vinyl');
   });
 
   it('returns null for an unknown release', async () => {
