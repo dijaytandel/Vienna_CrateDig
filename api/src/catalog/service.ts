@@ -31,6 +31,7 @@ const unavailable = () =>
 
 export function createCatalogService(providers: CatalogProvider[], now: () => number = Date.now) {
   const searches = new TtlCache<CatalogResult[]>(now);
+  const previews = new TtlCache<CatalogResult>(now);
   const records = new TtlCache<CatalogResult>(now);
 
   return {
@@ -42,7 +43,7 @@ export function createCatalogService(providers: CatalogProvider[], now: () => nu
         try {
           const results = await provider.search(key, MAX_RESULTS);
           searches.set(key, results);
-          for (const r of results) records.set(r.apiSourceId, r);
+          for (const r of results) previews.set(r.apiSourceId, r);
           return results;
         } catch {
           continue;
@@ -51,14 +52,17 @@ export function createCatalogService(providers: CatalogProvider[], now: () => nu
       throw unavailable();
     },
 
+    /** Prefers a full lookup (search previews lack tracks); falls back to the preview. */
     async getById(apiSourceId: string): Promise<CatalogResult | null> {
       const cached = records.get(apiSourceId);
       if (cached) return cached;
+      const preview = previews.get(apiSourceId);
       for (const provider of providers) {
         let result: CatalogResult | null;
         try {
           result = await provider.getById(apiSourceId);
         } catch {
+          if (preview) return preview;
           throw unavailable();
         }
         if (result) {
@@ -66,7 +70,7 @@ export function createCatalogService(providers: CatalogProvider[], now: () => nu
           return result;
         }
       }
-      return null;
+      return preview ?? null;
     },
   };
 }
