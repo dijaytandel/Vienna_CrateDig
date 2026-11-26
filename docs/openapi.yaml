@@ -1,0 +1,232 @@
+openapi: 3.1.0
+info:
+  title: CrateDig API
+  version: 1.0.0
+  description: |
+    REST API for CrateDig, a local vinyl discovery and collection tool.
+    Every error response uses the `Error` schema.
+  license:
+    name: UNLICENSED
+    identifier: UNLICENSED
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development
+tags:
+  - name: system
+    description: Service status
+  - name: catalog
+    description: External record catalog (Discogs, MusicBrainz fallback)
+paths:
+  /health:
+    get:
+      tags: [system]
+      operationId: getHealth
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: The API is running
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /catalog/search:
+    get:
+      tags: [catalog]
+      operationId: searchCatalog
+      summary: Search the external record catalog
+      description: |
+        Searches Discogs and falls back to MusicBrainz when Discogs is unavailable or
+        rate-limited. Identical queries (case- and whitespace-insensitive) are cached
+        for 24 hours.
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Artist, album or track text.
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 200
+          example: kind of blue
+      responses:
+        '200':
+          description: Up to 20 normalised results
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    maxItems: 20
+                    items:
+                      $ref: '#/components/schemas/CatalogResult'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/CatalogUnavailable'
+  /catalog/records:
+    post:
+      tags: [catalog]
+      operationId: upsertCatalogRecord
+      summary: Save a catalog result as a master record
+      description: |
+        Looks up the release by `apiSourceId` on the server and upserts one
+        `master_records` row keyed by `api_source_id`. Calling it again returns
+        the same `recordId`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [apiSourceId]
+              properties:
+                apiSourceId:
+                  $ref: '#/components/schemas/ApiSourceId'
+      responses:
+        '200':
+          description: The stored master record
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    required: [recordId]
+                    properties:
+                      recordId:
+                        type: string
+                        format: uuid
+                  - $ref: '#/components/schemas/CatalogResult'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: The catalog or the database is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                catalog:
+                  value:
+                    error:
+                      code: CATALOG_UNAVAILABLE
+                      message: The record catalog is unavailable, try again later
+                database:
+                  value:
+                    error:
+                      code: DATABASE_UNAVAILABLE
+                      message: The database is not configured
+components:
+  schemas:
+    ApiSourceId:
+      type: string
+      description: '`discogs:<release id>` or `musicbrainz:<release MBID>`.'
+      pattern: '^(discogs:\d+|musicbrainz:[0-9a-f-]{36})$'
+      example: discogs:249504
+    CatalogResult:
+      type: object
+      required:
+        - apiSourceId
+        - artistName
+        - albumTitle
+        - songTitle
+        - recordLabel
+        - releaseYear
+        - genre
+        - coverArtUrl
+      properties:
+        apiSourceId:
+          $ref: '#/components/schemas/ApiSourceId'
+        artistName:
+          type: string
+        albumTitle:
+          type: string
+        songTitle:
+          type: [string, 'null']
+        recordLabel:
+          type: [string, 'null']
+        releaseYear:
+          type: [integer, 'null']
+          minimum: 1900
+          maximum: 2100
+        genre:
+          type: [string, 'null']
+        coverArtUrl:
+          type: [string, 'null']
+          format: uri
+          description: When null, the client shows a two-letter initials badge.
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              pattern: '^[A-Z0-9_]+$'
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+  responses:
+    ValidationError:
+      description: The request is invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Request is invalid
+              details:
+                issues:
+                  - path: q
+                    message: Too small
+    NotFound:
+      description: The resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: NOT_FOUND
+              message: No catalog record discogs:1
+    CatalogUnavailable:
+      description: Every catalog provider failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: CATALOG_UNAVAILABLE
+              message: The record catalog is unavailable, try again later
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: INTERNAL_ERROR
+              message: Something went wrong

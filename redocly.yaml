@@ -1,0 +1,7 @@
+extends:
+  - recommended
+rules:
+  # Only the local server exists until a hosting provider is chosen.
+  no-server-example.com: off
+  # GET /health takes no input, so it has no client errors.
+  operation-4xx-response: off

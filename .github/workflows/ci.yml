@@ -43,3 +43,13 @@ jobs:
         with:
           version: 3.4.0
       - run: supabase db start
+
+  openapi:
+    name: openapi lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx -y @redocly/cli@2.83.0 lint docs/openapi.yaml
