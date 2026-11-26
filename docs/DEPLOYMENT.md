@@ -86,6 +86,17 @@ npm run build        # outputs dist/
 - **HTTPS is required** for the service worker and geolocation.
 - Add the client's origin to the API's `CORS_ORIGIN`.
 
+#### AWS Amplify Hosting
+
+[`amplify.yml`](../amplify.yml) builds `client/` with Node 22 and sets the cache headers above. In the Amplify console:
+
+1. Connect the GitHub repo and the `main` branch; Amplify picks up `amplify.yml` (monorepo app root `client`).
+2. Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_API_URL` under Environment variables.
+3. Under Rewrites and redirects, add the SPA fallback (200 rewrite):
+   - Source: `</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webmanifest)$)([^.]+$)/>`
+   - Target: `/index.html`
+4. If the API runs on another host and the client should call it at `/api/v1`, add a 200 rewrite from `/api/<*>` to `https://<api-host>/api/<*>` above the SPA rule, and leave `VITE_API_URL` unset.
+
 ## 4. Release checklist
 
 1. CI is green on `main`.
