@@ -5,6 +5,7 @@ import type { CrateItem } from '../../api/crate';
 import type { RecordDetail } from '../../api/records';
 import { APP_ROUTES } from '../../app/router';
 import type { AvatarUser } from '../../components/AvatarMenu';
+import { readCrateCache, writeCrateCache } from '../../lib/crateCache';
 import { FakeAuth } from '../../test/auth';
 
 const COLLECTOR: AvatarUser = { displayName: 'Dana Diggs', role: 'collector' };
@@ -286,14 +287,15 @@ describe('/crate/items/:id', () => {
           })
         : undefined,
     );
+    writeCrateCache('u1', 'collection', [item({ crateItemId: 'owned', listType: 'collection' })]);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm' }));
     await waitFor(() =>
-      expect(
-        Object.entries(localStorage).some(
-          ([k, v]) => k.endsWith('.collection') && String(v).includes(ITEM),
-        ),
-      ).toBe(true),
+      expect(readCrateCache('u1', 'collection')?.map((i) => i.crateItemId)).toEqual([
+        ITEM,
+        'owned',
+      ]),
     );
+    expect(readCrateCache('u1', 'want_list')).toBeNull();
     expect(
       await screen.findByText('Moved to Collection — marked sold out at Groove Merchant.'),
     ).toBeInTheDocument();

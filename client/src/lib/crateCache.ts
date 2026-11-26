@@ -26,8 +26,9 @@ const LISTS: ListType[] = ['collection', 'want_list'];
 export function cacheCrateItem(userId: string, item: CrateItem) {
   for (const list of LISTS) {
     const cached = readCrateCache(userId, list);
-    if (!cached && list !== item.listType) continue;
-    const rest = (cached ?? []).filter((i) => i.crateItemId !== item.crateItemId);
+    // A missing snapshot stays missing: one record is not the whole list.
+    if (!cached) continue;
+    const rest = cached.filter((i) => i.crateItemId !== item.crateItemId);
     writeCrateCache(userId, list, list === item.listType ? [item, ...rest] : rest);
   }
 }
