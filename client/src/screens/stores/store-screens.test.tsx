@@ -1,11 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StoreDetail, StoreListItem } from '../../api/stores';
 import { APP_ROUTES } from '../../app/router';
 import type { AvatarUser } from '../../components/AvatarMenu';
 import { FakeAuth } from '../../test/auth';
-import { formatTime, telHref } from './format';
+import { formatHours, formatTime, telHref } from './format';
 
 const COLLECTOR: AvatarUser = { displayName: 'Dana Diggs', role: 'collector' };
 const ID = '00000000-0000-4000-8000-000000000001';
@@ -151,6 +151,41 @@ describe('/stores', () => {
     expect(await screen.findByText('2 stores near 97205')).toBeInTheDocument();
   });
 
+  it('restores the searched ZIP and radius from the URL after Back', async () => {
+    setGeolocation('ok');
+    const router = renderAt('/stores');
+    await screen.findByText('2 stores near you');
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '97214' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Within 5 mi' }));
+    expect(await screen.findByText('1 store near 97214')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: /Groove Merchant/ }));
+    await screen.findByRole('heading', { name: /Groove Merchant Records/ });
+    await act(() => router.navigate(-1));
+    expect(await screen.findByText('1 store near 97214')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Within 5 mi' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(requested().at(-1)).toContain('zip=97214&radius=5');
+  });
+
+  it('keeps a ZIP search when GPS answers late', async () => {
+    let answer: PositionCallback = () => {};
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition: (ok: PositionCallback) => (answer = ok) },
+    });
+    renderAt('/stores');
+    expect(screen.getByRole('status')).toHaveTextContent('Finding your location');
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '97214' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    expect(await screen.findByText('2 stores near 97214')).toBeInTheDocument();
+    act(() => answer({ coords: { latitude: 1, longitude: 2 } } as GeolocationPosition));
+    expect(screen.getByText('2 stores near 97214')).toBeInTheDocument();
+    expect(requested().every((u) => u.includes('zip=97214'))).toBe(true);
+  });
+
   it('shows an empty state', async () => {
     setGeolocation('ok');
     fetchMock.mockImplementation(async () => json({ stores: [] }));
@@ -251,5 +286,8 @@ describe('format helpers', () => {
     expect(formatTime('21:00')).toBe('9:00 PM');
     expect(telHref('1-503-555-0142')).toBe('tel:+15035550142');
     expect(telHref('555-0142')).toBeNull();
+    expect(formatHours({ open: '11:00', close: '20:00' })).toBe('11:00 AM – 8:00 PM');
+    expect(formatHours({ open: 11, close: null } as never)).toBe('Closed');
+    expect(formatHours('9-5' as never)).toBe('Closed');
   });
 });

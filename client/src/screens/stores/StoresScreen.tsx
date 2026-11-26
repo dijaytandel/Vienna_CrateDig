@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../api/client';
 import { listStores, type Origin, type Radius, type StoreList } from '../../api/stores';
 import { useAuth } from '../../auth/context';
@@ -10,14 +10,9 @@ import StoreIcon, { VerifiedCheck } from './StoreIcon';
 
 const RADII: Radius[] = [5, 10, 25];
 
-type Located = { origin: Origin | null; locating: boolean };
-
-function initialLocation(defaultZip: string | null | undefined): Located {
-  if (typeof navigator !== 'undefined' && navigator.geolocation) {
-    return { origin: null, locating: true };
-  }
-  return { origin: defaultZip ? { zip: defaultZip } : null, locating: false };
-}
+const isRadius = (n: number): n is Radius => (RADII as number[]).includes(n);
+const isZip = (z: string | null): z is string => !!z && /^\d{5}$/.test(z);
+const hasGps = () => typeof navigator !== 'undefined' && !!navigator.geolocation;
 
 const originKey = (o: Origin) => ('zip' in o ? o.zip : `${o.lat.toFixed(4)},${o.lng.toFixed(4)}`);
 
@@ -28,12 +23,21 @@ function errorMessage(err: unknown, origin: Origin) {
   return err instanceof ApiError ? err.message : 'Something went wrong. Try again.';
 }
 
+type Gps = { done: boolean; coords: { lat: number; lng: number } | null };
+
 export default function StoresScreen() {
   const { preferences } = useAuth();
   const unit = preferences?.distanceUnit ?? 'mi';
-  const [radius, setRadius] = useState<Radius>(preferences?.radiusMiles ?? 10);
-  const [location, setLocation] = useState<Located>(() => initialLocation(preferences?.defaultZip));
-  const [zipInput, setZipInput] = useState('');
+  // A searched ZIP and chosen radius live in the URL so Back from a store restores them.
+  const [params, setParams] = useSearchParams();
+  const zipParam = params.get('zip');
+  const searchedZip = isZip(zipParam) ? zipParam : null;
+  const radiusParam = Number(params.get('radius'));
+  const radius: Radius = isRadius(radiusParam) ? radiusParam : (preferences?.radiusMiles ?? 10);
+  const savedZip = preferences?.defaultZip ?? null;
+
+  const [gps, setGps] = useState<Gps>(() => ({ done: !hasGps(), coords: null }));
+  const [zipInput, setZipInput] = useState(searchedZip ?? '');
   const [zipError, setZipError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<{
@@ -42,25 +46,30 @@ export default function StoresScreen() {
     error?: string;
   } | null>(null);
 
-  // GPS first; fall back to the saved ZIP, then ask for one.
+  // A searched ZIP wins; otherwise GPS, then the saved ZIP, then ask for one.
+  const needGps = !searchedZip && !gps.done;
   useEffect(() => {
-    if (!location.locating) return;
+    if (!needGps) return;
+    let active = true;
     navigator.geolocation.getCurrentPosition(
       (pos) =>
-        setLocation({
-          origin: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-          locating: false,
-        }),
-      () =>
-        setLocation({
-          origin: preferences?.defaultZip ? { zip: preferences.defaultZip } : null,
-          locating: false,
-        }),
+        active &&
+        setGps({ done: true, coords: { lat: pos.coords.latitude, lng: pos.coords.longitude } }),
+      () => active && setGps({ done: true, coords: null }),
       { timeout: 10_000, maximumAge: 300_000 },
     );
-  }, [location.locating, preferences?.defaultZip]);
+    return () => {
+      active = false;
+    };
+  }, [needGps]);
 
-  const { origin } = location;
+  const origin = useMemo<Origin | null>(() => {
+    if (searchedZip) return { zip: searchedZip };
+    if (gps.coords) return gps.coords;
+    if (gps.done && savedZip) return { zip: savedZip };
+    return null;
+  }, [searchedZip, gps, savedZip]);
+  const locating = needGps;
   const key = origin ? `${originKey(origin)}|${radius}|${unit}|${attempt}` : null;
 
   useEffect(() => {
@@ -75,19 +84,29 @@ export default function StoresScreen() {
     return () => controller.abort();
   }, [key, origin, radius, unit]);
 
+  const setParam = (name: string, value: string) =>
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p);
+        next.set(name, value);
+        return next;
+      },
+      { replace: true },
+    );
+
   const onZip = (e: FormEvent) => {
     e.preventDefault();
     const zip = zipInput.trim();
-    if (!/^\d{5}$/.test(zip)) {
+    if (!isZip(zip)) {
       setZipError('Enter a 5-digit ZIP code.');
       return;
     }
     setZipError(null);
-    setLocation({ origin: { zip }, locating: false });
+    setParam('zip', zip);
   };
 
   const current = result && result.key === key ? result : null;
-  const loading = location.locating || (!!key && !current);
+  const loading = locating || (!!key && !current);
 
   return (
     <section className="stack">
@@ -96,7 +115,7 @@ export default function StoresScreen() {
         label="Distance"
         options={RADII.map((r) => ({ value: r, label: `Within ${r} ${unit}` }))}
         value={radius}
-        onChange={setRadius}
+        onChange={(r) => setParam('radius', String(r))}
       />
 
       <form className="zip-form" onSubmit={onZip} noValidate>
@@ -130,7 +149,7 @@ export default function StoresScreen() {
 
       {loading && (
         <p className="muted" role="status">
-          {location.locating ? 'Finding your location…' : 'Loading stores…'}
+          {locating ? 'Finding your location…' : 'Loading stores…'}
         </p>
       )}
 
