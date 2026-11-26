@@ -7,7 +7,7 @@ export type SightingStatus = 'active' | 'sold_out' | 'flagged' | 'archived';
 
 export interface Sighting {
   sightingId: string;
-  priceUsd: number;
+  priceUsd: number | null;
   conditionGrade: ConditionGrade;
   specialAttributes: string | null;
   storeVerified: boolean;

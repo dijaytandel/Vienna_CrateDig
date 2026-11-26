@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Sighting } from '../../api/sightings';
 import { APP_ROUTES } from '../../app/router';
 import type { AvatarUser } from '../../components/AvatarMenu';
-import { flushQueue, readQueue } from '../../offline/queue';
+import { enqueue, flushQueue, readQueue } from '../../offline/queue';
 import { FakeAuth } from '../../test/auth';
 
 const COLLECTOR: AvatarUser = { displayName: 'Dana Diggs', role: 'collector' };
@@ -188,6 +188,26 @@ describe('/report', () => {
     expect(await flushQueue()).toEqual({ sent: 1, failed: 0 });
     expect(readQueue()).toHaveLength(0);
     expect(new Headers(posts().at(-1)![1].headers).get('Idempotency-Key')).toBe(key);
+  });
+
+  it('sends queued reports when the app opens and when it comes back online', async () => {
+    const body = { recordId: REC, storeId: NEAR, conditionGrade: 'vg' as const, priceUsd: null };
+    enqueue({ kind: 'report_sighting', body, idempotencyKey: 'k1' });
+    renderAt('/discover');
+    await waitFor(() => expect(readQueue()).toHaveLength(0));
+    enqueue({ kind: 'report_sighting', body, idempotencyKey: 'k2' });
+    window.dispatchEvent(new Event('online'));
+    await waitFor(() => expect(readQueue()).toHaveLength(0));
+    expect(posts()).toHaveLength(2);
+  });
+
+  it('does not keep a prefilled store the collector cannot see', async () => {
+    renderAt(`/report?recordId=${REC}&storeId=00000000-0000-4000-8000-0000000000ff`);
+    expect(await screen.findByText('Kind of Blue')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await screen.findByRole('option', { name: /Groove Merchant/ });
+    expect(screen.getByRole('combobox')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
   });
 });
 

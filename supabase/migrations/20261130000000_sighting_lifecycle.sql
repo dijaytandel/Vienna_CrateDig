@@ -160,3 +160,11 @@ begin
 end;
 $$;
 revoke execute on function public.moderate_sighting(uuid, uuid, text) from public, anon, authenticated;
+
+-- Reports go through POST /api/v1/sightings (service role) so the daily quota
+-- and idempotency always apply; collectors cannot insert directly.
+drop policy sightings_insert_own on public.sightings;
+revoke insert on public.sightings from authenticated;
+
+-- Price is optional when reporting; null means "not listed", never $0.00.
+alter table public.sightings alter column price_usd drop not null;

@@ -259,12 +259,14 @@ describe('/albums/:id', () => {
         ? json(item(), 201)
         : json({ error: { code: 'ALREADY_OWNED', message: 'Already owned' } }, 409);
     });
+    writeCrateCache('u1', 'collection', []);
     renderAt(`/albums/${REC}`);
     fireEvent.click(await screen.findByRole('button', { name: 'Add to Collection' }));
     const dialog = await screen.findByRole('alertdialog');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add anyway' }));
     expect(await screen.findByText('Added to your Collection.')).toBeInTheDocument();
     expect(calls('POST', '/crate')).toHaveLength(2);
+    expect(readCrateCache('u1', 'collection')).toHaveLength(1);
   });
 });
 

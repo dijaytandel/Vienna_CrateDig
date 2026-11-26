@@ -29,7 +29,15 @@ const createBody = z
       .max(999999.99)
       .refine((n) => Number(n.toFixed(2)) === n, 'At most 2 decimals')
       .nullish(),
-    specialAttributes: z.array(z.string().trim().min(1).max(40)).max(10).optional(),
+    specialAttributes: z
+      .array(z.string().trim().min(1).max(40))
+      .max(10)
+      // Stored joined with ', ' in a 200-character column.
+      .refine(
+        (tags) => tags.join(', ').length <= 200,
+        'Attributes are too long (200 characters total)',
+      )
+      .optional(),
   })
   .refine((b) => Boolean(b.apiSourceId) !== Boolean(b.recordId), {
     message: 'Provide either apiSourceId or recordId',
@@ -104,7 +112,7 @@ export function sightingsRouter(
     const created = await db.sightings.create(userId, {
       recordId: recordId!,
       storeId: body.storeId,
-      priceUsd: body.priceUsd ?? 0,
+      priceUsd: body.priceUsd ?? null,
       conditionGrade: body.conditionGrade,
       specialAttributes: body.specialAttributes?.length ? body.specialAttributes.join(', ') : null,
       clientRef,

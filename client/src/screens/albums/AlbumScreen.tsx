@@ -7,6 +7,7 @@ import { useAuth } from '../../auth/context';
 import { useProtectedAction } from '../../auth/useProtectedAction';
 import AlbumBadge from '../../components/ui/AlbumBadge';
 import Button from '../../components/ui/Button';
+import { cacheCrateItem } from '../../lib/crateCache';
 import { conditionLabel, formatUsd, timeAgo } from '../../lib/format';
 import { useAsync } from '../../lib/useAsync';
 import { originKey, useCurrentOrigin } from '../../lib/useCurrentOrigin';
@@ -65,6 +66,7 @@ export default function AlbumScreen() {
       try {
         const item = await addCrateItem({ recordId: r.recordId, listType, force });
         crate.setData((prev) => ({ items: [...(prev?.items ?? []), item] }));
+        if (userId) cacheCrateItem(userId, item);
         setMessage(
           listType === 'collection' ? 'Added to your Collection.' : 'Added to your Want List.',
         );

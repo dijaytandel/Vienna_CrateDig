@@ -29,7 +29,7 @@ export interface StoreSighting {
   albumTitle: string;
   genre: string | null;
   coverArtUrl: string | null;
-  priceUsd: number;
+  priceUsd: number | null;
   conditionGrade: 'mint' | 'near_mint' | 'vg_plus' | 'vg' | 'fair';
   specialAttributes: string | null;
   storeVerified: boolean;
