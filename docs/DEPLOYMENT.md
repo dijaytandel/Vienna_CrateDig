@@ -88,7 +88,7 @@ npm run build        # outputs dist/
 
 #### AWS Amplify Hosting
 
-[`amplify.yml`](../amplify.yml) builds `client/` with Node 22 and sets the cache headers above. In the Amplify console:
+[`amplify.yml`](../amplify.yml) builds `client/` with Node 22, and [`customHttp.yml`](../customHttp.yml) sets the cache headers above. In the Amplify console:
 
 1. Connect the GitHub repo and the `main` branch; Amplify picks up `amplify.yml` (monorepo app root `client`).
 2. Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_API_URL` under Environment variables.
