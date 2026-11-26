@@ -20,7 +20,8 @@ export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> 
     if ((err as Error).name === 'AbortError') throw err;
     throw new ApiError(0, 'NETWORK_ERROR', "Can't reach CrateDig. Check your connection.");
   }
-  const body = (await res.json().catch(() => null)) as {
+  const isJson = res.headers.get('content-type')?.includes('application/json') ?? false;
+  const body = (isJson ? await res.json().catch(() => null) : null) as {
     error?: { code?: string; message?: string };
   } | null;
   if (!res.ok) {
@@ -29,6 +30,10 @@ export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> 
       body?.error?.code ?? 'HTTP_ERROR',
       body?.error?.message ?? 'Something went wrong. Try again.',
     );
+  }
+  if (body === null) {
+    // e.g. a static host answering /api/* with index.html because VITE_API_URL is unset.
+    throw new ApiError(res.status, 'BAD_RESPONSE', 'CrateDig sent an unexpected response. Try again.');
   }
   return body as T;
 }
