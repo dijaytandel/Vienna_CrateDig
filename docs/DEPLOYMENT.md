@@ -31,7 +31,12 @@ When `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY` is missing, endpoints that wr
 
 ### Client (`client/`)
 
-There are no client environment variables yet. Vite only exposes variables prefixed `VITE_`, and those end up in the public bundle, so they must never hold secrets.
+Vite only exposes variables prefixed `VITE_`, and they end up in the public bundle, so they must never hold secrets. They are read at build time.
+
+| Name | Purpose |
+|---|---|
+| `VITE_SUPABASE_URL` | Supabase project URL, for Supabase Auth. If unset, the app runs in guest-only mode. |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon (public) key. Never the service-role key. |
 
 ## 3. Deploy steps
 
