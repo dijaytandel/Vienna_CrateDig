@@ -10,11 +10,15 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 import { catalogRouter } from './routes/catalog.js';
 import { healthRouter } from './routes/health.js';
+import { storesRouter } from './routes/stores.js';
+import { supabaseStores, type StoreRepository } from './stores/repository.js';
 
 export interface AppOptions {
   auth?: AuthService;
   catalog?: CatalogService;
   records?: MasterRecordRepository;
+  stores?: StoreRepository;
+  now?: () => Date;
   configure?: (v1: Router, auth?: AuthService) => void;
 }
 
@@ -31,10 +35,17 @@ const defaultRecords = () =>
     ? supabaseMasterRecords(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
     : undefined;
 
+const defaultStores = () =>
+  env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY
+    ? supabaseStores(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+    : undefined;
+
 export function createApp({
   auth = defaultAuth(),
   catalog = defaultCatalog(),
   records = defaultRecords(),
+  stores = defaultStores(),
+  now,
   configure,
 }: AppOptions = {}) {
   const app = express();
@@ -46,6 +57,7 @@ export function createApp({
   const v1 = Router();
   v1.use('/health', healthRouter);
   v1.use('/catalog', catalogRouter(catalog, records, auth));
+  v1.use('/stores', storesRouter(stores, now));
   configure?.(v1, auth);
   app.use('/api/v1', v1);
 
