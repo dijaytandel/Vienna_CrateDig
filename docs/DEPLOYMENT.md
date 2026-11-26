@@ -97,6 +97,17 @@ npm run build        # outputs dist/
    - Target: `/index.html`
 4. If the API runs on another host and the client should call it at `/api/v1`, add a 200 rewrite from `/api/<*>` to `https://<api-host>/api/<*>` above the SPA rule, and leave `VITE_API_URL` unset.
 
+#### Scripted deploy (Lambda API + Amplify manual deployment)
+
+[`scripts/deploy-aws.sh`](../scripts/deploy-aws.sh) deploys without connecting GitHub to Amplify. It needs AWS CLI v2, Node 22 and `zip`, plus `AWS_REGION`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` (VAPID and Discogs variables are optional). Re-running updates everything in place:
+
+1. Creates (or reuses) the Amplify app `cratedig` and branch `main`; its domain becomes the API's `CORS_ORIGIN`.
+2. Bundles the API with `npm run build:lambda` (`api/src/lambda.ts`, via `serverless-http`) and deploys it as the Lambda function `cratedig-api` with a public Function URL.
+3. Sets the Amplify rewrites (`/api/<*>` proxied to the Function URL, then the SPA fallback) and the `customHttp.yml` headers.
+4. Builds the client and uploads it as an Amplify manual deployment, then waits for it to finish.
+
+After the first deploy, set the hosted Supabase Auth **Site URL** to the Amplify domain so confirmation emails link back to the app.
+
 ## 4. Release checklist
 
 1. CI is green on `main`.
