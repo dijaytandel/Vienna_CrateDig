@@ -11,6 +11,9 @@ import CrateScreen from '../screens/crate/CrateScreen';
 import BroadcastScreen from '../screens/broadcasts/BroadcastScreen';
 import BroadcastComposerScreen from '../screens/merchant/BroadcastComposerScreen';
 import MerchantBroadcastsScreen from '../screens/merchant/MerchantBroadcastsScreen';
+import MerchantDashboardScreen from '../screens/merchant/MerchantDashboardScreen';
+import MerchantSightingsScreen from '../screens/merchant/MerchantSightingsScreen';
+import MerchantStoreScreen from '../screens/merchant/MerchantStoreScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -38,6 +41,9 @@ const SCREENS: Record<string, () => React.JSX.Element> = {
   '/report': ReportScreen,
   '/search': SearchScreen,
   '/sightings/:id': SightingScreen,
+  '/merchant': MerchantDashboardScreen,
+  '/merchant/sightings': MerchantSightingsScreen,
+  '/merchant/store': MerchantStoreScreen,
   '/merchant/broadcasts': MerchantBroadcastsScreen,
   '/merchant/broadcasts/new': BroadcastComposerScreen,
 };

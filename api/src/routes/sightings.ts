@@ -3,7 +3,12 @@ import { z } from 'zod';
 import type { AuthService } from '../auth/service.js';
 import type { MasterRecordRepository } from '../catalog/repository.js';
 import type { CatalogService } from '../catalog/service.js';
-import { currentUser, requireAuth } from '../middleware/auth.js';
+import {
+  currentStoreId,
+  currentUser,
+  requireAuth,
+  requireVerifiedManager,
+} from '../middleware/auth.js';
 import { HttpError } from '../middleware/httpError.js';
 import type { SightingRepository } from '../sightings/repository.js';
 import { boundingBox, distanceMiles, toUnit } from '../stores/geo.js';
@@ -48,6 +53,8 @@ const detailQuery = z.object({ ...originFields, unit: z.enum(['mi', 'km']).defau
 const idParam = z.object({ id: z.string().uuid() });
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
+const moderateBody = z.object({ action: z.enum(['confirm', 'flag', 'mark_sold']) });
+
 export function sightingsRouter(
   sightings: SightingRepository | undefined,
   stores: StoreRepository | undefined,
@@ -77,6 +84,25 @@ export function sightingsRouter(
         )
       : null;
     res.json({ ...s, distance, unit: q.unit });
+  });
+
+  router.patch('/:id', ...requireVerifiedManager(auth), async (req, res) => {
+    const { id } = parse(idParam, req.params);
+    const { action } = parse(moderateBody, req.body);
+    if (!sightings) {
+      throw new HttpError(503, 'DATABASE_UNAVAILABLE', 'The database is not configured');
+    }
+    const existing = await sightings.get(id);
+    if (!existing) throw new HttpError(404, 'NOT_FOUND', 'No such sighting');
+    if (existing.store.storeId !== currentStoreId(res)) {
+      throw new HttpError(403, 'FORBIDDEN', 'Only the verified manager of this store can do this');
+    }
+    if (existing.status === 'archived') {
+      throw new HttpError(409, 'CONFLICT', 'Archived sightings cannot be changed');
+    }
+    const updated = await sightings.moderate(currentUser(res).id, id, action);
+    if (!updated) throw new HttpError(404, 'NOT_FOUND', 'No such sighting');
+    res.json(updated);
   });
 
   router.post('/', requireAuth(auth), async (req, res) => {

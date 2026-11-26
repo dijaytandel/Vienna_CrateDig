@@ -60,6 +60,16 @@ export interface StoreRepository {
     sightings: StoreSighting[];
     broadcasts: StoreBroadcast[];
   } | null>;
+  /** Updates the fields a verified manager may edit. */
+  updateManaged(storeId: string, patch: ManagedStorePatch): Promise<void>;
+}
+
+export interface ManagedStorePatch {
+  phone?: string | null;
+  websiteUrl?: string | null;
+  operatingHours?: OperatingHours;
+  paymentMethods?: string[];
+  tags?: string[];
 }
 
 // Name columns explicitly: license_doc_url must never leave the database.
@@ -106,6 +116,17 @@ export function supabaseStores(url: string, serviceRoleKey: string): StoreReposi
         .lte('geo_lng', box.maxLng);
       if (error) throw error;
       return (data as Row[]).map(toSummary);
+    },
+
+    async updateManaged(storeId, patch) {
+      const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (patch.phone !== undefined) row.phone = patch.phone;
+      if (patch.websiteUrl !== undefined) row.website_url = patch.websiteUrl;
+      if (patch.operatingHours !== undefined) row.operating_hours = patch.operatingHours;
+      if (patch.paymentMethods !== undefined) row.payment_methods = patch.paymentMethods;
+      if (patch.tags !== undefined) row.tags = patch.tags;
+      const { error } = await db.from('stores').update(row).eq('store_id', storeId);
+      if (error) throw error;
     },
 
     async getById(storeId) {
