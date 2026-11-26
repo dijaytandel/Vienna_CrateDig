@@ -116,6 +116,8 @@ const toRow = (p: CratePatch) => {
 /** Escapes a user term for a PostgREST `ilike` inside an `or=(...)` filter. */
 export const ilikeTerm = (q: string) => `"%${q.replace(/[\\%_"]/g, (c) => `\\${c}`)}%"`;
 
+const PAGE = 1000;
+
 export function supabaseCrate(url: string, serviceRoleKey: string): CrateRepository {
   const db = createClient(url, serviceRoleKey, { auth: { persistSession: false } });
   const one = async (userId: string, column: string, value: string) => {
@@ -135,7 +137,7 @@ export function supabaseCrate(url: string, serviceRoleKey: string): CrateReposit
         .select(COLUMNS)
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(2000);
+        .order('crate_item_id');
       if (f.listType) query = query.eq('list_type', f.listType);
       if (f.recordId) query = query.eq('record_id', f.recordId);
       if (f.genre) query = query.ilike('record.genre', f.genre);
@@ -145,9 +147,14 @@ export function supabaseCrate(url: string, serviceRoleKey: string): CrateReposit
           referencedTable: 'record',
         });
       }
-      const { data, error } = await query;
-      if (error) throw error;
-      return data.map(toItem);
+      // PostgREST caps each response (max_rows), so page until a short page.
+      const rows: CrateItem[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await query.range(from, from + PAGE - 1);
+        if (error) throw error;
+        rows.push(...data.map(toItem));
+        if (data.length < PAGE) return rows;
+      }
     },
     get: (userId, id) => one(userId, 'crate_item_id', id),
     byClientRef: (userId, ref) => one(userId, 'client_ref', ref),
