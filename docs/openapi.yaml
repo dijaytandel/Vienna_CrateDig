@@ -518,6 +518,83 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '503':
           $ref: '#/components/responses/DatabaseUnavailable'
+  /merchant/sightings:
+    get:
+      tags: [sightings]
+      operationId: listMerchantSightings
+      summary: Active sightings at the caller's verified store, unconfirmed first, newest first (latest 100)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Verification queue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [storeId, sightings]
+                properties:
+                  storeId: { type: string, format: uuid }
+                  sightings:
+                    type: array
+                    items: { $ref: '#/components/schemas/Sighting' }
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+  /merchant/store:
+    patch:
+      tags: [stores]
+      operationId: updateMyStore
+      summary: Edit the caller's verified store (hours, phone, website, payment methods, specialties)
+      description: >-
+        Name, address and verification status cannot be changed here. Phone numbers are normalised
+        to (503) 555-0100; an empty string clears phone or website.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                phone: { type: [string, 'null'], examples: ['503-555-0100'] }
+                websiteUrl: { type: [string, 'null'], pattern: '^(https?://.*)?$' }
+                operatingHours:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    mon: { $ref: '#/components/schemas/DayHours' }
+                    tue: { $ref: '#/components/schemas/DayHours' }
+                    wed: { $ref: '#/components/schemas/DayHours' }
+                    thu: { $ref: '#/components/schemas/DayHours' }
+                    fri: { $ref: '#/components/schemas/DayHours' }
+                    sat: { $ref: '#/components/schemas/DayHours' }
+                    sun: { $ref: '#/components/schemas/DayHours' }
+                paymentMethods:
+                  type: array
+                  maxItems: 10
+                  items: { type: string, minLength: 1, maxLength: 40 }
+                tags:
+                  type: array
+                  maxItems: 10
+                  items: { type: string, minLength: 1, maxLength: 40 }
+      responses:
+        '200':
+          description: The updated store
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StoreDetail' }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
   /push/public-key:
     get:
       tags: [push]
@@ -832,6 +909,44 @@ paths:
                       unit: { type: string, enum: [mi, km] }
         '404':
           $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [sightings]
+      operationId: moderateSighting
+      summary: Confirm, flag or mark a sighting sold (verified manager of its store only)
+      description: >-
+        confirm sets storeVerified; flag and mark_sold change status, which removes the sighting
+        from feed and search. Rows are never deleted and every change is logged with actor and time.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              additionalProperties: false
+              properties:
+                action: { type: string, enum: [confirm, flag, mark_sold] }
+      responses:
+        '200':
+          description: The updated sighting
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Sighting' }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
   /stores/nearest:
     get:
       tags: [stores]

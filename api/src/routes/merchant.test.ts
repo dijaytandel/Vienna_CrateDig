@@ -116,7 +116,7 @@ describe('/api/v1/merchant', () => {
           wed: null,
           thu: null,
           fri: { open: '10:00', close: '24:00' },
-          sat: null,
+          sat: { open: '20:00', close: '02:00' },
           sun: null,
         },
         paymentMethods: ['Cash', 'Card'],
@@ -135,7 +135,7 @@ describe('/api/v1/merchant', () => {
   it.each([
     [{ phone: '555-0100' }, 'phone'],
     [{ websiteUrl: 'ftp://x.test' }, 'websiteUrl'],
-    [{ operatingHours: { mon: { open: '19:00', close: '10:00' } } }, 'operatingHours.mon'],
+    [{ operatingHours: { mon: { open: '25:00', close: '10:00' } } }, 'operatingHours.mon.open'],
     [{ tags: Array.from({ length: 11 }, (_, i) => `t${i}`) }, 'tags'],
     [{ businessName: 'New name' }, ''],
   ])('rejects %j', async (body, path) => {

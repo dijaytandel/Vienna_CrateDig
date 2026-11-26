@@ -10,10 +10,8 @@ import { parse } from './parse.js';
 const QUEUE_LIMIT = 100;
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$|^24:00$/, 'Use HH:MM (24-hour)');
-const dayHours = z
-  .object({ open: time, close: time })
-  .refine((h) => h.open < h.close, 'Closing time must be after opening time')
-  .nullable();
+// A close at or before open runs past midnight, matching DayHours in the store directory.
+const dayHours = z.object({ open: time, close: time }).nullable();
 const tags = z.array(z.string().trim().min(1).max(40)).max(10);
 
 /** Accepts common U.S. formats and stores `(503) 555-0100`. */
