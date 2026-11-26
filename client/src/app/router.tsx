@@ -12,6 +12,7 @@ import DiscoverScreen from '../screens/DiscoverScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ReportScreen from '../screens/report/ReportScreen';
+import SearchScreen from '../screens/search/SearchScreen';
 import SightingScreen from '../screens/sightings/SightingScreen';
 import SignupScreen from '../screens/SignupScreen';
 import StoreProfileScreen from '../screens/stores/StoreProfileScreen';
@@ -31,6 +32,7 @@ const SCREENS: Record<string, () => React.JSX.Element> = {
   '/crate/items/:id': CrateItemScreen,
   '/albums/:id': AlbumScreen,
   '/report': ReportScreen,
+  '/search': SearchScreen,
   '/sightings/:id': SightingScreen,
 };
 

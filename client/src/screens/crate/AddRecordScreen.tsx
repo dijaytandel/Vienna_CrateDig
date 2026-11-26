@@ -26,7 +26,7 @@ export default function AddRecordScreen() {
   const [listType, setListType] = useState<ListType>(
     params.get('list') === 'want_list' ? 'want_list' : 'collection',
   );
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => params.get('q') ?? '');
   const [selected, setSelected] = useState<CatalogResult | null>(null);
   const [fields, setFields] = useState<FieldValues>(emptyFields);
   const [saving, setSaving] = useState(false);
