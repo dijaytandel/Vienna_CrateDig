@@ -185,17 +185,17 @@ describe('/report', () => {
     expect(readQueue()).toHaveLength(1);
     const key = readQueue()[0].action.idempotencyKey;
     offline = false;
-    expect(await flushQueue()).toEqual({ sent: 1, failed: 0 });
+    expect(await flushQueue('u1')).toEqual({ sent: 1, failed: 0 });
     expect(readQueue()).toHaveLength(0);
     expect(new Headers(posts().at(-1)![1].headers).get('Idempotency-Key')).toBe(key);
   });
 
   it('sends queued reports when the app opens and when it comes back online', async () => {
     const body = { recordId: REC, storeId: NEAR, conditionGrade: 'vg' as const, priceUsd: null };
-    enqueue({ kind: 'report_sighting', body, idempotencyKey: 'k1' });
+    enqueue({ kind: 'report_sighting', body, idempotencyKey: 'k1' }, 'u1');
     renderAt('/discover');
     await waitFor(() => expect(readQueue()).toHaveLength(0));
-    enqueue({ kind: 'report_sighting', body, idempotencyKey: 'k2' });
+    enqueue({ kind: 'report_sighting', body, idempotencyKey: 'k2' }, 'u1');
     window.dispatchEvent(new Event('online'));
     await waitFor(() => expect(readQueue()).toHaveLength(0));
     expect(posts()).toHaveLength(2);

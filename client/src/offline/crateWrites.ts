@@ -12,7 +12,7 @@ import {
 } from '../api/crate';
 import { cacheCrateItem, readCrateCache, uncacheCrateItem } from '../lib/crateCache';
 import { newId } from '../lib/format';
-import { enqueue, readQueue } from './queue';
+import { enqueue, flushQueue, hasPendingWrites, queueFor } from './queue';
 
 /** Crate writes that fall back to the offline queue and update the local snapshot either way. */
 export interface Outcome {
@@ -24,40 +24,57 @@ export const PENDING_PREFIX = 'pending-';
 export const isPendingItem = (i: Pick<CrateItem, 'crateItemId'>) =>
   i.crateItemId.startsWith(PENDING_PREFIX);
 
+/**
+ * Sends a write now, or queues it when offline. While older writes are still
+ * queued, the new one joins the back of the queue so replays keep their order.
+ */
+async function sendOrQueue<T>(
+  userId: string | null,
+  send: () => Promise<T>,
+  queue: (owner: string) => void,
+): Promise<{ result: T; queued: false } | { queued: true }> {
+  if (userId && hasPendingWrites(userId)) {
+    queue(userId);
+    if (navigator.onLine) void flushQueue(userId);
+    return { queued: true };
+  }
+  try {
+    return { result: await send(), queued: false };
+  } catch (err) {
+    if (!userId || !isOfflineError(err)) throw err;
+    queue(userId);
+    return { queued: true };
+  }
+}
+
 export async function saveCrateEdit(
   userId: string | null,
   item: CrateItem,
   patch: CrateFields,
 ): Promise<Outcome> {
-  try {
-    const updated = await updateCrateItem(item.crateItemId, patch);
-    if (userId) cacheCrateItem(userId, updated);
-    return { item: updated, queued: false };
-  } catch (err) {
-    if (!isOfflineError(err)) throw err;
-    enqueue({
-      kind: 'update_crate_item',
-      id: item.crateItemId,
-      body: patch,
-      idempotencyKey: newId(),
-    });
-    const updated = { ...item, ...patch } as CrateItem;
-    if (userId) cacheCrateItem(userId, updated);
-    return { item: updated, queued: true };
-  }
+  const out = await sendOrQueue(
+    userId,
+    () => updateCrateItem(item.crateItemId, patch),
+    (owner) =>
+      enqueue(
+        { kind: 'update_crate_item', id: item.crateItemId, body: patch, idempotencyKey: newId() },
+        owner,
+      ),
+  );
+  const updated = out.queued ? ({ ...item, ...patch } as CrateItem) : out.result;
+  if (userId) cacheCrateItem(userId, updated);
+  return { item: updated, queued: out.queued };
 }
 
 export async function removeCrateItem(userId: string | null, item: CrateItem) {
-  try {
-    await deleteCrateItem(item.crateItemId);
-    if (userId) uncacheCrateItem(userId, item.crateItemId);
-    return { queued: false };
-  } catch (err) {
-    if (!isOfflineError(err)) throw err;
-    enqueue({ kind: 'delete_crate_item', id: item.crateItemId, idempotencyKey: newId() });
-    if (userId) uncacheCrateItem(userId, item.crateItemId);
-    return { queued: true };
-  }
+  const out = await sendOrQueue(
+    userId,
+    () => deleteCrateItem(item.crateItemId),
+    (owner) =>
+      enqueue({ kind: 'delete_crate_item', id: item.crateItemId, idempotencyKey: newId() }, owner),
+  );
+  if (userId) uncacheCrateItem(userId, item.crateItemId);
+  return { queued: out.queued };
 }
 
 export async function acquireItem(
@@ -67,23 +84,28 @@ export async function acquireItem(
   store: { storeId: string; businessName: string } | null,
   acquire = acquireCrateItem,
 ): Promise<Outcome> {
-  try {
-    const res = await acquire(item.crateItemId, body);
-    if (userId) cacheCrateItem(userId, res.item);
-    return { item: res.item, queued: false };
-  } catch (err) {
-    if (!isOfflineError(err)) throw err;
-    enqueue({ kind: 'acquire_crate_item', id: item.crateItemId, body, idempotencyKey: newId() });
-    const acquired: CrateItem = {
-      ...item,
-      listType: 'collection',
-      acquiredAt: new Date().toISOString(),
-      purchasePriceUsd: body.purchasePriceUsd ?? null,
-      purchasedStore: store,
-    };
-    if (userId) cacheCrateItem(userId, acquired);
-    return { item: acquired, queued: true };
+  const out = await sendOrQueue(
+    userId,
+    () => acquire(item.crateItemId, body),
+    (owner) =>
+      enqueue(
+        { kind: 'acquire_crate_item', id: item.crateItemId, body, idempotencyKey: newId() },
+        owner,
+      ),
+  );
+  if (!out.queued) {
+    if (userId) cacheCrateItem(userId, out.result.item);
+    return { item: out.result.item, queued: false };
   }
+  const acquired: CrateItem = {
+    ...item,
+    listType: 'collection',
+    acquiredAt: new Date().toISOString(),
+    purchasePriceUsd: body.purchasePriceUsd ?? null,
+    purchasedStore: store,
+  };
+  if (userId) cacheCrateItem(userId, acquired);
+  return { item: acquired, queued: true };
 }
 
 /**
@@ -101,7 +123,7 @@ export async function addItem(
     if (userId) cacheCrateItem(userId, added);
     return { item: added, queued: false };
   } catch (err) {
-    if (!isOfflineError(err)) throw err;
+    if (!userId || !isOfflineError(err)) throw err;
     const preview: CrateItem = {
       crateItemId: `${PENDING_PREFIX}${idempotencyKey}`,
       listType: body.listType,
@@ -114,15 +136,15 @@ export async function addItem(
       purchasedStore: null,
       record,
     };
-    enqueue({ kind: 'add_crate_item', body, idempotencyKey, preview });
-    if (userId) cacheCrateItem(userId, preview);
+    enqueue({ kind: 'add_crate_item', body, idempotencyKey, preview }, userId);
+    cacheCrateItem(userId, preview);
     return { item: preview, queued: true };
   }
 }
 
 /** Queued adds for a list, so they stay visible until the server has them. */
-export function pendingAdds(list: ListType): CrateItem[] {
-  return readQueue()
+export function pendingAdds(owner: string, list: ListType): CrateItem[] {
+  return queueFor(owner)
     .map((e) => (e.action.kind === 'add_crate_item' ? e.action.preview : undefined))
     .filter((p): p is CrateItem => !!p && p.listType === list);
 }

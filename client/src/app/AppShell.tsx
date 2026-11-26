@@ -14,14 +14,14 @@ export default function AppShell() {
   useEffect(() => {
     if (!session) return;
     const flush = () => {
-      if (navigator.onLine) void flushQueue();
+      if (navigator.onLine) void flushQueue(session.user.id);
     };
     flush();
     window.addEventListener('online', flush);
     return () => window.removeEventListener('online', flush);
   }, [session]);
   const online = useOnline();
-  const { pending, failed } = useQueueCounts();
+  const { pending, failed } = useQueueCounts(session?.user.id ?? null);
   const changes = (n: number) => (n === 1 ? '1 change' : `${n} changes`);
   return (
     <div className="app-shell">
@@ -42,7 +42,7 @@ export default function AppShell() {
           <span>
             {changes(failed)} made offline couldn&apos;t be saved. Check My Crate and try again.
           </span>
-          <Button variant="secondary" onClick={discardFailed}>
+          <Button variant="secondary" onClick={() => session && discardFailed(session.user.id)}>
             Dismiss
           </Button>
         </div>
