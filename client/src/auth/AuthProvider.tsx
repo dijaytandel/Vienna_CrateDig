@@ -1,3 +1,4 @@
+import { setAccessToken } from '../api/client';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 import type { AvatarUser } from '../components/AvatarMenu';
@@ -68,6 +69,7 @@ export default function AuthProvider({
       const nextAccount = next ? await loadAccount(client, next) : null;
       if (!current || mine !== generation.current) return;
       userId.current = next?.user.id ?? null;
+      setAccessToken(next?.access_token ?? null);
       setSession(next);
       setAccount(nextAccount);
       setStatus('ready');
