@@ -28,6 +28,8 @@ tags:
     description: Discover feed of sightings and broadcasts
   - name: broadcasts
     description: Store stock-arrival broadcasts
+  - name: push
+    description: Web push subscriptions for broadcasts
 paths:
   /health:
     get:
@@ -412,6 +414,183 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '404':
           $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+  /broadcasts:
+    post:
+      tags: [broadcasts]
+      operationId: createBroadcast
+      summary: Publish a stock-arrival broadcast for the caller's verified store
+      description: >-
+        `posted_at` is set by the server. Opted-in collectors who favorited the store, or whose home ZIP
+        is within their default radius, get a web push before the response returns; push services
+        that answer 404/410 have that subscription removed.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [arrivalSummary]
+              properties:
+                arrivalSummary: { type: string, minLength: 1, maxLength: 500 }
+                photoUrl: { type: [string, 'null'], format: uri, pattern: '^https://' }
+                featuredIds:
+                  type: array
+                  maxItems: 10
+                  uniqueItems: true
+                  items: { type: string, format: uuid }
+                  description: Saved master record ids (save catalog picks with `POST /catalog/records`)
+      responses:
+        '201':
+          description: Published
+          headers:
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BroadcastDetail'
+                  - type: object
+                    properties:
+                      notified:
+                        type: [object, 'null']
+                        description: Push results; null when push is not configured or failed
+                        properties:
+                          sent: { type: integer }
+                          removed: { type: integer }
+                          failed: { type: integer }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+  /stores/{id}/broadcasts:
+    get:
+      tags: [broadcasts]
+      operationId: listStoreBroadcasts
+      summary: A store's broadcasts, newest first (latest 50)
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Broadcast history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [broadcasts]
+                properties:
+                  broadcasts:
+                    type: array
+                    items: { $ref: '#/components/schemas/StoreBroadcast' }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+  /merchant/broadcasts:
+    get:
+      tags: [broadcasts]
+      operationId: listMyBroadcasts
+      summary: The caller's verified store and its broadcasts, newest first (latest 50)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Broadcast history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [storeId, broadcasts]
+                properties:
+                  storeId: { type: string, format: uuid }
+                  broadcasts:
+                    type: array
+                    items: { $ref: '#/components/schemas/StoreBroadcast' }
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+  /push/public-key:
+    get:
+      tags: [push]
+      operationId: getPushPublicKey
+      summary: VAPID public key for `PushManager.subscribe`
+      security: []
+      responses:
+        '200':
+          description: The key
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [publicKey]
+                properties:
+                  publicKey: { type: string }
+        '503':
+          description: Push is not configured
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /push/subscription:
+    put:
+      tags: [push]
+      operationId: savePushSubscription
+      summary: Save this device's push subscription and turn broadcast push on
+      description: A device belongs to one account; saving it removes it from any other account.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint, keys]
+              properties:
+                endpoint: { type: string, format: uri, pattern: '^https://' }
+                keys:
+                  type: object
+                  required: [p256dh, auth]
+                  properties:
+                    p256dh: { type: string }
+                    auth: { type: string }
+      responses:
+        '204':
+          description: Saved
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+    delete:
+      tags: [push]
+      operationId: deletePushSubscription
+      summary: Remove this device's subscription; push turns off when no device is left
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint]
+              properties:
+                endpoint: { type: string, format: uri }
+      responses:
+        '204':
+          description: Removed
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '503':
           $ref: '#/components/responses/DatabaseUnavailable'
   /crate:
@@ -972,6 +1151,11 @@ components:
               type: object
               additionalProperties: true
   responses:
+    Forbidden:
+      description: The caller is not allowed to do this
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     Conflict:
       description: Conflicts with the current state (e.g. ALREADY_OWNED, NOT_ON_WANT_LIST)
       content:
