@@ -71,6 +71,7 @@ export default function CrateScreen() {
 
   const changeTab = (next: ListType) => {
     setTab(next);
+    setGenre('');
     try {
       localStorage.setItem(TAB_KEY, next);
     } catch {
