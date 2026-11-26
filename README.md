@@ -21,6 +21,8 @@ CrateDig is built to **enhance, not replace,** in-person crate-digging. It is a 
 | [Site map](docs/SITEMAP.md) | Roles, hierarchy, navigation and the route-by-route screen inventory |
 | [Task list](docs/TASKS.md) | Development tasks with acceptance criteria, mapped to US-01 – US-10 |
 | [Workspace rules](docs/WORKSPACE_RULES.md) | Naming, branching, commits, PR and review process |
+| [OpenAPI](docs/openapi.yaml) | REST API v1 contract, linted in CI |
+| [Deployment](docs/DEPLOYMENT.md) | Environments, env var names, deploy and rollback steps |
 
 ## Repo layout
 
