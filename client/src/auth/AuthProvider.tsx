@@ -119,6 +119,7 @@ export default function AuthProvider({
       },
       async toggleFavoriteStore(storeId) {
         if (!session || !account) return { error: 'Log in to save favorite stores.' };
+        const mine = generation.current;
         const current = account.preferences.favoriteStoreIds;
         const next = current.includes(storeId)
           ? current.filter((id) => id !== storeId)
@@ -128,6 +129,8 @@ export default function AuthProvider({
           .update({ favorite_store_ids: next })
           .eq('user_id', session.user.id);
         if (error) return { error: 'Could not update your favorite stores. Try again.' };
+        // The user signed out or switched accounts while the write was in flight.
+        if (mine !== generation.current) return { error: null };
         setAccount((a) => a && { ...a, preferences: { ...a.preferences, favoriteStoreIds: next } });
         return { error: null };
       },

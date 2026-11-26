@@ -32,10 +32,22 @@ function mockClient(
         })
       : Promise.resolve({ data: profile }),
   );
-  const client = { auth, from: () => ({ select: () => ({ eq: () => ({ maybeSingle }) }) }) };
+  let finishUpdate: () => void = () => {};
+  const updateEq = vi.fn(
+    () =>
+      new Promise<{ error: null }>((resolve) => (finishUpdate = () => resolve({ error: null }))),
+  );
+  const update = vi.fn(() => ({ eq: updateEq }));
+  const client = {
+    auth,
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle }) }), update }),
+  };
   return {
     client: client as unknown as SupabaseClient,
     auth,
+    update,
+    updateEq,
+    finishUpdate: () => finishUpdate(),
     resolveProfile: (p: Record<string, unknown>) => resolveProfile(p),
   };
 }
@@ -129,6 +141,45 @@ describe('AuthProvider', () => {
     await act(async () => resolveProfile({ display_name: 'Stale' }));
     expect(screen.getByText('guest')).toBeInTheDocument();
     expect(screen.queryByText('Stale')).toBeNull();
+  });
+
+  it('toggles a favorite store on the profile', async () => {
+    const { client, update, updateEq, finishUpdate } = mockClient(session, {
+      favorite_store_ids: ['s1'],
+    });
+    render(
+      <AuthProvider client={client}>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(state.preferences?.favoriteStoreIds).toEqual(['s1']));
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = state.toggleFavoriteStore('s2');
+    });
+    finishUpdate();
+    await act(() => pending);
+    expect(update).toHaveBeenCalledWith({ favorite_store_ids: ['s1', 's2'] });
+    expect(updateEq).toHaveBeenCalledWith('user_id', 'u1');
+    expect(state.preferences?.favoriteStoreIds).toEqual(['s1', 's2']);
+  });
+
+  it('ignores a favorite write that finishes after sign-out', async () => {
+    const { client, finishUpdate } = mockClient(session, { favorite_store_ids: [] });
+    render(
+      <AuthProvider client={client}>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(state.preferences).not.toBeNull());
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = state.toggleFavoriteStore('s2');
+    });
+    await act(() => state.signOut());
+    finishUpdate();
+    await act(() => pending);
+    expect(state.preferences).toBeNull();
   });
 
   it('maps auth errors and signs out', async () => {
