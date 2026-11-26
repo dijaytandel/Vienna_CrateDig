@@ -98,3 +98,27 @@ npm run build        # outputs dist/
 
 - **Client / API:** redeploy the previous build, or the previous commit of `main`.
 - **Database:** write and push a new migration that reverses the change. Additive migrations (new tables or nullable columns) usually need no rollback when the code is rolled back.
+
+## 6. Store manager verification (admin procedure)
+
+There is no admin screen. A collector applies at `/merchant/verify` with a business-license URL, which sets the store's `manager_user_id`, `license_doc_url` and `verification_status = 'pending'`. An admin reviews it in the Supabase SQL editor (runs as `postgres`):
+
+```sql
+-- 1. Pending claims, oldest first
+select s.store_id, s.business_name, s.city, s.state, s.license_doc_url,
+       p.display_name, p.email, s.updated_at
+from public.stores s join public.profiles p on p.user_id = s.manager_user_id
+where s.verification_status = 'pending'
+order by s.updated_at;
+
+-- 2a. Approve: store becomes verified, applicant becomes store_manager
+select public.admin_review_store('<store_id>', 'verified');
+
+-- 2b. Reject: store shows Rejected to the applicant, applicant stays a collector
+select public.admin_review_store('<store_id>', 'rejected');
+```
+
+- `admin_review_store` cannot be called through the API or by signed-in users; only the database owner can run it.
+- A rejected store is hidden from the public directory, feed and search until someone applies again with a new license.
+- The applicant sees the new status on `/merchant/verify` and `/profile` the next time it loads. After approval they need to reload the app (or sign in again) for the Merchant menu to appear.
+

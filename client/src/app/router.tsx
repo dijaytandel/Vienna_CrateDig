@@ -14,6 +14,7 @@ import MerchantBroadcastsScreen from '../screens/merchant/MerchantBroadcastsScre
 import MerchantDashboardScreen from '../screens/merchant/MerchantDashboardScreen';
 import MerchantSightingsScreen from '../screens/merchant/MerchantSightingsScreen';
 import MerchantStoreScreen from '../screens/merchant/MerchantStoreScreen';
+import MerchantVerifyScreen from '../screens/merchant/MerchantVerifyScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -44,6 +45,7 @@ const SCREENS: Record<string, () => React.JSX.Element> = {
   '/merchant': MerchantDashboardScreen,
   '/merchant/sightings': MerchantSightingsScreen,
   '/merchant/store': MerchantStoreScreen,
+  '/merchant/verify': MerchantVerifyScreen,
   '/merchant/broadcasts': MerchantBroadcastsScreen,
   '/merchant/broadcasts/new': BroadcastComposerScreen,
 };
