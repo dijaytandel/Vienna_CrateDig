@@ -289,7 +289,7 @@ paths:
       summary: Active sightings near a location, nearest first then newest
       description: >-
         Every word of `q` must appear in the artist, album or genre (case- and
-        accent-insensitive). Location is `lat`+`lng`, else `zip`.
+        accent-insensitive). Location is `lat`+`lng`, else `zip`. At most 200 results.
       security: []
       parameters:
         - { name: q, in: query, schema: { type: string, maxLength: 100 } }

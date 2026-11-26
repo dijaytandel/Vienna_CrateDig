@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import type { ConditionGrade } from '../sightings/repository.js';
-import type { Box } from '../stores/repository.js';
 
 export interface SearchHit {
   sightingId: string;
@@ -23,11 +22,22 @@ export interface SearchHit {
     geoLng: number;
     isVerified: boolean;
   };
+  distanceMiles: number;
+}
+
+export interface SearchQuery {
+  q: string;
+  genre: string | null;
+  lat: number;
+  lng: number;
+  radiusMiles: number;
 }
 
 export interface SearchRepository {
-  /** Active sightings in the box whose record matches every term of `q`, newest first. */
-  search(q: string, box: Box): Promise<SearchHit[]>;
+  /** Active sightings in the radius matching every term of `q`, nearest then newest. */
+  search(query: SearchQuery): Promise<SearchHit[]>;
+  /** Genres among the keyword matches, ignoring the genre filter. */
+  genres(query: SearchQuery): Promise<string[]>;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -52,21 +62,28 @@ const toHit = (r: any): SearchHit => ({
     geoLng: Number(r.geo_lng),
     isVerified: r.store_is_verified,
   },
+  distanceMiles: Number(r.distance_mi),
+});
+
+const params = (q: SearchQuery) => ({
+  p_q: q.q,
+  p_lat: q.lat,
+  p_lng: q.lng,
+  p_radius_mi: q.radiusMiles,
 });
 
 export function supabaseSearch(url: string, serviceRoleKey: string): SearchRepository {
   const db = createClient(url, serviceRoleKey, { auth: { persistSession: false } });
   return {
-    async search(q, box) {
-      const { data, error } = await db.rpc('search_sightings', {
-        p_q: q,
-        p_min_lat: box.minLat,
-        p_max_lat: box.maxLat,
-        p_min_lng: box.minLng,
-        p_max_lng: box.maxLng,
-      });
+    async search(q) {
+      const { data, error } = await db.rpc('search_sightings', { ...params(q), p_genre: q.genre });
       if (error) throw error;
       return (data as any[]).map(toHit);
+    },
+    async genres(q) {
+      const { data, error } = await db.rpc('search_genres', params(q));
+      if (error) throw error;
+      return data as string[];
     },
   };
 }
