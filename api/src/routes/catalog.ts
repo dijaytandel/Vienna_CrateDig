@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import type { AuthService } from '../auth/service.js';
 import type { MasterRecordRepository } from '../catalog/repository.js';
 import type { CatalogService } from '../catalog/service.js';
+import { requireAuth } from '../middleware/auth.js';
 import { HttpError } from '../middleware/httpError.js';
 
 const searchQuery = z.object({ q: z.string().trim().min(2).max(200) });
@@ -19,7 +21,11 @@ function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   return result.data;
 }
 
-export function catalogRouter(catalog: CatalogService, records?: MasterRecordRepository) {
+export function catalogRouter(
+  catalog: CatalogService,
+  records?: MasterRecordRepository,
+  auth?: AuthService,
+) {
   const router = Router();
 
   router.get('/search', async (req, res) => {
@@ -27,7 +33,7 @@ export function catalogRouter(catalog: CatalogService, records?: MasterRecordRep
     res.json({ results: await catalog.search(q) });
   });
 
-  router.post('/records', async (req, res) => {
+  router.post('/records', requireAuth(auth), async (req, res) => {
     const { apiSourceId } = parse(recordBody, req.body);
     if (!records) {
       throw new HttpError(503, 'DATABASE_UNAVAILABLE', 'The database is not configured');

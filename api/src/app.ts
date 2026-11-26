@@ -1,6 +1,7 @@
 import cors from 'cors';
 import express, { Router } from 'express';
 import helmet from 'helmet';
+import { supabaseAuth, type AuthService } from './auth/service.js';
 import { discogsProvider, musicBrainzProvider } from './catalog/providers.js';
 import { supabaseMasterRecords, type MasterRecordRepository } from './catalog/repository.js';
 import { createCatalogService, type CatalogService } from './catalog/service.js';
@@ -11,13 +12,19 @@ import { catalogRouter } from './routes/catalog.js';
 import { healthRouter } from './routes/health.js';
 
 export interface AppOptions {
+  auth?: AuthService;
   catalog?: CatalogService;
   records?: MasterRecordRepository;
-  configure?: (v1: Router) => void;
+  configure?: (v1: Router, auth?: AuthService) => void;
 }
 
 const defaultCatalog = () =>
   createCatalogService([discogsProvider(env.DISCOGS_TOKEN), musicBrainzProvider()]);
+
+const defaultAuth = () =>
+  env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY
+    ? supabaseAuth(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+    : undefined;
 
 const defaultRecords = () =>
   env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY
@@ -25,6 +32,7 @@ const defaultRecords = () =>
     : undefined;
 
 export function createApp({
+  auth = defaultAuth(),
   catalog = defaultCatalog(),
   records = defaultRecords(),
   configure,
@@ -37,8 +45,8 @@ export function createApp({
 
   const v1 = Router();
   v1.use('/health', healthRouter);
-  v1.use('/catalog', catalogRouter(catalog, records));
-  configure?.(v1);
+  v1.use('/catalog', catalogRouter(catalog, records, auth));
+  configure?.(v1, auth);
   app.use('/api/v1', v1);
 
   app.use(notFound);

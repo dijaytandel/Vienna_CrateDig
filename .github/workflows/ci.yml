@@ -43,6 +43,7 @@ jobs:
         with:
           version: 3.4.0
       - run: supabase db start
+      - run: supabase test db
 
   openapi:
     name: openapi lint

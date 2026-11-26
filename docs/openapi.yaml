@@ -83,8 +83,9 @@ paths:
       description: |
         Looks up the release by `apiSourceId` on the server and upserts one
         `master_records` row keyed by `api_source_id`. Calling it again returns
-        the same `recordId`.
-      security: []
+        the same `recordId`. Requires a logged-in user.
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -111,10 +112,12 @@ paths:
                   - $ref: '#/components/schemas/CatalogResult'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
         '404':
           $ref: '#/components/responses/NotFound'
         '503':
-          description: The catalog or the database is unavailable
+          description: The catalog, the database or authentication is unavailable
           content:
             application/json:
               schema:
@@ -130,7 +133,21 @@ paths:
                     error:
                       code: DATABASE_UNAVAILABLE
                       message: The database is not configured
+                auth:
+                  value:
+                    error:
+                      code: AUTH_UNAVAILABLE
+                      message: Authentication is not configured
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Supabase Auth access token. Write endpoints return `401 UNAUTHENTICATED`
+        without one; merchant endpoints return `403 FORBIDDEN` unless the caller
+        manages a verified store.
   schemas:
     ApiSourceId:
       type: string
@@ -186,6 +203,16 @@ components:
               type: object
               additionalProperties: true
   responses:
+    Unauthenticated:
+      description: Missing, invalid or expired access token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: UNAUTHENTICATED
+              message: Log in to do this
     ValidationError:
       description: The request is invalid
       content:
