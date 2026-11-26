@@ -76,8 +76,9 @@ console.log(JSON.stringify([
   { source: "/api/<*>", target: api + "/api/<*>", status: "200" },
   { source: "</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webmanifest)$)([^.]+$)/>", target: "/index.html", status: "200" },
 ]));' "$FN_URL")
-aws amplify update-app --app-id "$APP_ID" --custom-rules "$RULES" \
-  --custom-headers "$(cat "$ROOT/customHttp.yml")" >/dev/null
+# Manual-deploy apps take the single-app header format, not customHttp.yml's monorepo wrapper.
+HEADERS=$(sed -n '/customHeaders:/,$p' "$ROOT/customHttp.yml" | sed 's/^    //')
+aws amplify update-app --app-id "$APP_ID" --custom-rules "$RULES" --custom-headers "$HEADERS" >/dev/null
 
 # --- Client build and manual deployment ---
 (cd "$ROOT/client" && npm ci --silent &&

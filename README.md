@@ -15,7 +15,9 @@ CrateDig is built to **enhance, not replace,** in-person crate-digging. It is a 
 
 ## Live app
 
-Not deployed yet: the AWS Amplify app and the hosted Supabase project still need credentials. The public URL goes here once it is live; [Deployment](docs/DEPLOYMENT.md) has the steps.
+**https://main.d2403pxp27mt6v.amplifyapp.com** (best on a phone; add it to your home screen to install the PWA).
+
+The client is on AWS Amplify Hosting, the API on AWS Lambda (proxied at `/api/v1`), and the database on hosted Supabase, all in `us-west-2`. Demo stores are in Portland, OR: allow location or enter ZIP `97205`. Sign up with any email; the hosted project does not require email confirmation. [Deployment](docs/DEPLOYMENT.md) covers redeploying with `scripts/deploy-aws.sh`.
 
 ## Features
 
