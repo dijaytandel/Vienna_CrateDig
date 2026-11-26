@@ -1,17 +1,17 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import Button from '../components/ui/Button';
 
 export default function ProfileScreen() {
   const { user, preferences, signOut } = useAuth();
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
+  const error = (useLocation().state as { signOutError?: string } | null)?.signOutError;
 
+  // Leave the protected page first, otherwise RequireAuth sends the guest to /login.
   const onSignOut = async () => {
+    await navigate('/discover', { replace: true });
     const result = await signOut();
-    if (result.error) setError(result.error);
-    else navigate('/discover', { replace: true });
+    if (result.error) navigate('/profile', { state: { signOutError: result.error } });
   };
 
   return (

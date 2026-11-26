@@ -284,7 +284,7 @@ a:focus-visible {
 
 .details {
   display: grid;
-  grid-template-columns: max-content 1fr;
+  grid-template-columns: max-content minmax(0, 1fr);
   gap: 8px 16px;
   margin: 0;
 }
@@ -295,4 +295,5 @@ a:focus-visible {
 
 .details dd {
   margin: 0;
+  overflow-wrap: anywhere;
 }

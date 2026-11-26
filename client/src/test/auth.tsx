@@ -12,9 +12,11 @@ const fakeSession = { user: { id: 'u1' } } as Session;
 export function FakeAuth({
   children,
   user = null,
+  signOutError = null,
 }: {
   children: ReactNode;
   user?: AvatarUser | null;
+  signOutError?: string | null;
 }) {
   const [current, setCurrent] = useState(user);
   const [zip, setZip] = useState<string | null>('60601');
@@ -37,6 +39,7 @@ export function FakeAuth({
       return { error: null };
     },
     async signOut() {
+      if (signOutError) return { error: signOutError };
       setCurrent(null);
       return { error: null };
     },
