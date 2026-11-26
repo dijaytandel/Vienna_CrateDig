@@ -1,18 +1,19 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getStore, type StoreDetail } from '../api/stores';
-import { useAuth, type Preferences } from '../auth/context';
+import { useAuth, type Preferences, type PreferencesPatch } from '../auth/context';
 import Button from '../components/ui/Button';
 import { PillGroup } from '../components/ui/Pill';
 import TagInput from '../components/ui/TagInput';
 import BroadcastPushToggle from './BroadcastPushToggle';
 import StoreClaimStatus from './StoreClaimStatus';
 
-const RADII = [
-  { value: 5, label: '5 mi' },
-  { value: 10, label: '10 mi' },
-  { value: 25, label: '25 mi' },
-] as const;
+const RADII = (unit: string) =>
+  [
+    { value: 5, label: `5 ${unit}` },
+    { value: 10, label: `10 ${unit}` },
+    { value: 25, label: `25 ${unit}` },
+  ] as const;
 const UNITS = [
   { value: 'mi', label: 'Miles' },
   { value: 'km', label: 'Kilometers' },
@@ -73,13 +74,14 @@ function PreferencesForm({ displayName, prefs }: { displayName: string; prefs: P
     e.preventDefault();
     if (nameError || zipError) return;
     setBusy(true);
-    const result = await updatePreferences({
-      displayName: name.trim(),
-      defaultZip: zip || null,
-      radiusMiles: radius,
-      distanceUnit: unit,
-      genres,
-    });
+    // Only changed fields are sent, so an unchanged legacy value can't block other edits.
+    const patch: PreferencesPatch = {};
+    if (name.trim() !== displayName) patch.displayName = name.trim();
+    if ((zip || null) !== prefs.defaultZip) patch.defaultZip = zip || null;
+    if (radius !== prefs.radiusMiles) patch.radiusMiles = radius;
+    if (unit !== prefs.distanceUnit) patch.distanceUnit = unit;
+    if (genres.join('\n') !== prefs.genres.join('\n')) patch.genres = genres;
+    const result = await updatePreferences(patch);
     setBusy(false);
     setStatus(result.error ? { ok: false, text: result.error } : { ok: true, text: 'Saved.' });
   };
@@ -125,7 +127,7 @@ function PreferencesForm({ displayName, prefs }: { displayName: string; prefs: P
         <span>Default radius</span>
         <PillGroup
           label="Default radius"
-          options={RADII}
+          options={RADII(unit)}
           value={radius}
           onChange={(v) => {
             changed();
@@ -183,9 +185,13 @@ function FavoriteStores({ ids }: { ids: string[] }) {
     return () => controller.abort();
   }, [key]);
 
+  // One removal at a time: each write replaces the whole favorites list.
+  const [removing, setRemoving] = useState(false);
   const remove = async (id: string) => {
     setError(null);
+    setRemoving(true);
     const result = await toggleFavoriteStore(id);
+    setRemoving(false);
     if (result.error) setError(result.error);
   };
 
@@ -207,6 +213,7 @@ function FavoriteStores({ ids }: { ids: string[] }) {
                 <Button
                   variant="secondary"
                   aria-label={`Remove ${name} from favorites`}
+                  disabled={removing}
                   onClick={() => void remove(id)}
                 >
                   Remove
