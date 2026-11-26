@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(25);
 
 -- Fixtures (as postgres, bypassing RLS)
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -46,6 +46,11 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-00000000000a","role":"authenticated"}';
 select is((select array_agg(display_name) from public.profiles), array['Alice'], 'users read only their own profile');
 select is((select count(*) from public.crate_items), 0::bigint, 'users cannot read another user''s crate');
+select throws_ok(
+  $$insert into public.sightings (record_id, store_id, user_id, price_usd, condition_grade)
+    values ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001',
+            '00000000-0000-0000-0000-00000000000a', 1, 'vg')$$,
+  '42501', null, 'collectors report through the API, not by direct insert');
 select is_empty(
   $$update public.profiles set display_name = 'Hacked'
     where user_id = '00000000-0000-0000-0000-00000000000b' returning 1$$,
