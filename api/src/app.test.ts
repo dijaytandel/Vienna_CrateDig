@@ -17,10 +17,12 @@ describe('api', () => {
 
   it('unhandled errors return a JSON 500 with no stack trace', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    const app = createApp((v1) => {
-      v1.get('/boom', () => {
-        throw new Error('secret internals');
-      });
+    const app = createApp({
+      configure: (v1) => {
+        v1.get('/boom', () => {
+          throw new Error('secret internals');
+        });
+      },
     });
     const res = await request(app).get('/api/v1/boom');
     expect(res.status).toBe(500);
