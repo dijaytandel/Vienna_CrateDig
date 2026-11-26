@@ -75,6 +75,7 @@ describe('AuthProvider', () => {
       radiusMiles: 25,
       distanceUnit: 'km',
       genres: ['Jazz'],
+      favoriteStoreIds: [],
     });
   });
 

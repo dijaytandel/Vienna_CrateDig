@@ -3,7 +3,12 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// In dev and preview, /api goes to the local Express API.
+const apiProxy = { '/api': process.env.API_PROXY_TARGET ?? 'http://localhost:3000' };
+
 export default defineConfig({
+  server: { proxy: apiProxy },
+  preview: { proxy: apiProxy },
   plugins: [
     react(),
     VitePWA({

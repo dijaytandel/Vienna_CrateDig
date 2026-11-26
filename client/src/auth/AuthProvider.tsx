@@ -23,7 +23,7 @@ async function loadAccount(client: SupabaseClient, session: Session): Promise<Ac
   const { data } = await client
     .from('profiles')
     .select(
-      'display_name, user_role, default_zip, default_radius_miles, distance_unit, genre_preferences',
+      'display_name, user_role, default_zip, default_radius_miles, distance_unit, genre_preferences, favorite_store_ids',
     )
     .eq('user_id', session.user.id)
     .maybeSingle();
@@ -41,6 +41,7 @@ async function loadAccount(client: SupabaseClient, session: Session): Promise<Ac
       radiusMiles: data?.default_radius_miles ?? DEFAULT_PREFERENCES.radiusMiles,
       distanceUnit: data?.distance_unit ?? DEFAULT_PREFERENCES.distanceUnit,
       genres: data?.genre_preferences ?? DEFAULT_PREFERENCES.genres,
+      favoriteStoreIds: data?.favorite_store_ids ?? DEFAULT_PREFERENCES.favoriteStoreIds,
     },
   };
 }
@@ -114,6 +115,20 @@ export default function AuthProvider({
         setSession(null);
         setAccount(null);
         setStatus('ready');
+        return { error: null };
+      },
+      async toggleFavoriteStore(storeId) {
+        if (!session || !account) return { error: 'Log in to save favorite stores.' };
+        const current = account.preferences.favoriteStoreIds;
+        const next = current.includes(storeId)
+          ? current.filter((id) => id !== storeId)
+          : [...current, storeId];
+        const { error } = await client
+          .from('profiles')
+          .update({ favorite_store_ids: next })
+          .eq('user_id', session.user.id);
+        if (error) return { error: 'Could not update your favorite stores. Try again.' };
+        setAccount((a) => a && { ...a, preferences: { ...a.preferences, favoriteStoreIds: next } });
         return { error: null };
       },
     };

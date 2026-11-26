@@ -8,6 +8,7 @@ export interface Preferences {
   radiusMiles: 5 | 10 | 25;
   distanceUnit: 'mi' | 'km';
   genres: string[];
+  favoriteStoreIds: string[];
 }
 
 export interface SignUpInput {
@@ -27,6 +28,8 @@ export interface AuthState {
   signIn(email: string, password: string): Promise<AuthResult>;
   signUp(input: SignUpInput): Promise<AuthResult>;
   signOut(): Promise<AuthResult>;
+  /** Adds or removes a store from the signed-in user's favorite stores. */
+  toggleFavoriteStore(storeId: string): Promise<AuthResult>;
 }
 
 const unavailable = async () => ({ error: 'Accounts are not available right now.' });
@@ -37,6 +40,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   radiusMiles: 10,
   distanceUnit: 'mi',
   genres: [],
+  favoriteStoreIds: [],
 };
 
 export const GUEST: AuthState = {
@@ -47,6 +51,7 @@ export const GUEST: AuthState = {
   signIn: unavailable,
   signUp: unavailable,
   signOut: async () => ({ error: null }),
+  toggleFavoriteStore: unavailable,
 };
 
 export const AuthContext = createContext<AuthState>(GUEST);

@@ -20,12 +20,19 @@ export function FakeAuth({
 }) {
   const [current, setCurrent] = useState(user);
   const [zip, setZip] = useState<string | null>('60601');
+  const [favorites, setFavorites] = useState<string[]>([]);
   const value: AuthState = {
     ...GUEST,
     session: current ? fakeSession : null,
     user: current,
     preferences: current
-      ? { ...DEFAULT_PREFERENCES, email: 'd@x.test', defaultZip: zip, genres: ['Jazz', 'Soul'] }
+      ? {
+          ...DEFAULT_PREFERENCES,
+          email: 'd@x.test',
+          defaultZip: zip,
+          genres: ['Jazz', 'Soul'],
+          favoriteStoreIds: favorites,
+        }
       : null,
     async signIn(_email, password) {
       if (password !== 'password') return { error: 'Email or password is incorrect.' };
@@ -41,6 +48,12 @@ export function FakeAuth({
     async signOut() {
       if (signOutError) return { error: signOutError };
       setCurrent(null);
+      return { error: null };
+    },
+    async toggleFavoriteStore(storeId) {
+      setFavorites((f) =>
+        f.includes(storeId) ? f.filter((id) => id !== storeId) : [...f, storeId],
+      );
       return { error: null };
     },
   };
