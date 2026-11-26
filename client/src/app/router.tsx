@@ -8,6 +8,7 @@ import AlbumScreen from '../screens/albums/AlbumScreen';
 import AddRecordScreen from '../screens/crate/AddRecordScreen';
 import CrateItemScreen from '../screens/crate/CrateItemScreen';
 import CrateScreen from '../screens/crate/CrateScreen';
+import BroadcastScreen from '../screens/broadcasts/BroadcastScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -21,6 +22,7 @@ import WelcomeScreen from '../screens/WelcomeScreen';
 
 const SCREENS: Record<string, () => React.JSX.Element> = {
   '/discover': DiscoverScreen,
+  '/broadcasts/:id': BroadcastScreen,
   '/login': LoginScreen,
   '/signup': SignupScreen,
   '/profile': ProfileScreen,

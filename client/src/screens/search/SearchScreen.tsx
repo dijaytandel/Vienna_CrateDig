@@ -8,23 +8,12 @@ import AlbumBadge from '../../components/ui/AlbumBadge';
 import Button from '../../components/ui/Button';
 import { PillGroup } from '../../components/ui/Pill';
 import { conditionLabel, formatUsd } from '../../lib/format';
+import { isZip, readGuestZip, saveGuestZip } from '../../lib/guestZip';
 import { originKey, useCurrentOrigin } from '../../lib/useCurrentOrigin';
 import { VerifiedCheck } from '../stores/StoreIcon';
 
 const RADII: Radius[] = [5, 10, 25];
-const GUEST_ZIP_KEY = 'cratedig.guestZip';
-
 const isRadius = (n: number): n is Radius => (RADII as number[]).includes(n);
-const isZip = (z: string | null | undefined): z is string => !!z && /^\d{5}$/.test(z);
-
-function readGuestZip() {
-  try {
-    const zip = localStorage.getItem(GUEST_ZIP_KEY);
-    return isZip(zip) ? zip : null;
-  } catch {
-    return null;
-  }
-}
 
 function errorMessage(err: unknown, origin: Origin) {
   if (err instanceof ApiError && err.code === 'ZIP_NOT_FOUND' && 'zip' in origin) {
@@ -98,11 +87,7 @@ export default function SearchScreen() {
     }
     setZipError(null);
     if (!session) {
-      try {
-        localStorage.setItem(GUEST_ZIP_KEY, zip);
-      } catch {
-        // Private mode: the ZIP still works for this visit through the URL.
-      }
+      saveGuestZip(zip);
       setGuestZip(zip);
     }
     setParam('zip', zip);

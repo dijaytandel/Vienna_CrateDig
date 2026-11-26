@@ -104,7 +104,8 @@ describe('sign out', () => {
       'Offline',
     );
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Offline');
+    // Discover renders briefly (and may show its own alert) before the failed sign-out returns.
+    expect(await screen.findByText('Offline')).toHaveAttribute('role', 'alert');
     expect(router.state.location.pathname).toBe('/profile');
   });
 });
