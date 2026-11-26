@@ -33,7 +33,11 @@ export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> 
   }
   if (body === null) {
     // e.g. a static host answering /api/* with index.html because VITE_API_URL is unset.
-    throw new ApiError(res.status, 'BAD_RESPONSE', 'CrateDig sent an unexpected response. Try again.');
+    throw new ApiError(
+      res.status,
+      'BAD_RESPONSE',
+      'CrateDig sent an unexpected response. Try again.',
+    );
   }
   return body as T;
 }
