@@ -23,10 +23,7 @@ const listQuery = z
   .object({
     lat: optional(z.coerce.number().min(-90).max(90)),
     lng: optional(z.coerce.number().min(-180).max(180)),
-    zip: z
-      .string()
-      .regex(/^\d{5}$/, 'Must be a 5-digit ZIP')
-      .optional(),
+    zip: optional(z.string().regex(/^\d{5}$/, 'Must be a 5-digit ZIP')),
     radius: z.coerce
       .number()
       .refine((r) => (RADII as readonly number[]).includes(r), 'Must be 5, 10 or 25')
