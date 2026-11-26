@@ -9,7 +9,7 @@ export default function StoreClaimStatus() {
   if (!claim) {
     return mine.data ? (
       <p>
-        <Link to="/merchant/verify">Manage a record store? Get verified</Link>
+        <Link to="/merchant/verify">Become a store manager</Link>
       </p>
     ) : null;
   }

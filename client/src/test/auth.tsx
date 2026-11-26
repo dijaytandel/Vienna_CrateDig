@@ -1,6 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { AuthContext, DEFAULT_PREFERENCES, GUEST, type AuthState } from '../auth/context';
+import {
+  AuthContext,
+  DEFAULT_PREFERENCES,
+  GUEST,
+  type AuthState,
+  type Preferences,
+} from '../auth/context';
 import type { AvatarUser } from '../components/AvatarMenu';
 
 const fakeSession = { user: { id: 'u1' } } as Session;
@@ -21,6 +27,7 @@ export function FakeAuth({
   const [current, setCurrent] = useState(user);
   const [zip, setZip] = useState<string | null>('60601');
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [prefs, setPrefs] = useState<Partial<Preferences>>({});
   const value: AuthState = {
     ...GUEST,
     session: current ? fakeSession : null,
@@ -32,6 +39,7 @@ export function FakeAuth({
           defaultZip: zip,
           genres: ['Jazz', 'Soul'],
           favoriteStoreIds: favorites,
+          ...prefs,
         }
       : null,
     async signIn(_email, password) {
@@ -48,6 +56,12 @@ export function FakeAuth({
     async signOut() {
       if (signOutError) return { error: signOutError };
       setCurrent(null);
+      return { error: null };
+    },
+    async updatePreferences({ displayName, favoriteStoreIds, ...rest }) {
+      if (displayName && current) setCurrent({ ...current, displayName });
+      if (favoriteStoreIds) setFavorites(favoriteStoreIds);
+      setPrefs((p) => ({ ...p, ...rest }));
       return { error: null };
     },
     async toggleFavoriteStore(storeId) {

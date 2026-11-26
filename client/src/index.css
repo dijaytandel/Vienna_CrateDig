@@ -845,3 +845,7 @@ select.input {
   gap: 6px;
   min-height: 44px;
 }
+
+.break-anywhere {
+  overflow-wrap: anywhere;
+}

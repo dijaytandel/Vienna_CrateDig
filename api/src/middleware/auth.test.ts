@@ -15,7 +15,7 @@ function app(auth = fakeAuth(users, { mara: 'store-1' })) {
     auth,
     catalog: { search: async () => [], getById: async () => null },
     configure(v1, configured) {
-      v1.get('/me', requireAuth(configured), (_req, res) => {
+      v1.get('/whoami', requireAuth(configured), (_req, res) => {
         res.json(currentUser(res));
       });
       v1.post('/merchant/ping', ...requireVerifiedManager(configured), (_req, res) => {
@@ -28,7 +28,7 @@ function app(auth = fakeAuth(users, { mara: 'store-1' })) {
 describe('requireAuth', () => {
   it('returns 401 without a token, with a malformed header, or with a bad token', async () => {
     for (const header of [undefined, 'alice', 'Basic alice', 'Bearer nobody']) {
-      const req = request(app()).get('/api/v1/me');
+      const req = request(app()).get('/api/v1/whoami');
       const res = await (header ? req.set('Authorization', header) : req);
       expect(res.status).toBe(401);
       expect(res.body.error.code).toBe('UNAUTHENTICATED');
@@ -37,7 +37,7 @@ describe('requireAuth', () => {
   });
 
   it('exposes the caller', async () => {
-    const res = await request(app()).get('/api/v1/me').set('Authorization', 'Bearer alice');
+    const res = await request(app()).get('/api/v1/whoami').set('Authorization', 'Bearer alice');
     expect(res.body).toEqual({ id: 'alice', role: 'collector' });
   });
 

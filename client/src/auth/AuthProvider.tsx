@@ -1,4 +1,4 @@
-import { setAccessToken } from '../api/client';
+import { apiSend, errorText, setAccessToken } from '../api/client';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 import type { AvatarUser } from '../components/AvatarMenu';
@@ -14,6 +14,15 @@ const url = import.meta.env.VITE_SUPABASE_URL;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // supabase-js keeps the session in localStorage and refreshes it, so it survives reloads.
 const defaultClient = url && anonKey ? createClient(url, anonKey) : null;
+
+interface ServerProfile {
+  displayName: string;
+  defaultZip: string | null;
+  radiusMiles: Preferences['radiusMiles'];
+  distanceUnit: Preferences['distanceUnit'];
+  genres: string[];
+  favoriteStoreIds: string[];
+}
 
 interface Account {
   user: AvatarUser;
@@ -137,6 +146,30 @@ export default function AuthProvider({
         if (userId.current !== session.user.id) return { error: null };
         setAccount((a) => a && { ...a, preferences: { ...a.preferences, favoriteStoreIds: next } });
         return { error: null };
+      },
+      async updatePreferences(patch) {
+        if (!session || !account) return { error: 'Log in to save your preferences.' };
+        try {
+          const me = await apiSend<ServerProfile>('PATCH', '/me', patch);
+          if (userId.current !== session.user.id) return { error: null };
+          setAccount(
+            (a) =>
+              a && {
+                user: { ...a.user, displayName: me.displayName },
+                preferences: {
+                  ...a.preferences,
+                  defaultZip: me.defaultZip,
+                  radiusMiles: me.radiusMiles,
+                  distanceUnit: me.distanceUnit,
+                  genres: me.genres,
+                  favoriteStoreIds: me.favoriteStoreIds,
+                },
+              },
+          );
+          return { error: null };
+        } catch (err) {
+          return { error: errorText(err) };
+        }
       },
     };
   }, [client, status, session, account]);
