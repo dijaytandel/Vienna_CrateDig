@@ -98,7 +98,11 @@ export function discogsProvider(token: string | undefined, fetchFn: FetchFn = fe
         apiSourceId,
         artistName: discogsCredit(r.artists),
         albumTitle: r.title,
-        songTitle: text(r.tracklist?.[0]?.title),
+        songTitle: text(
+          (r.tracklist as { type_?: string; title?: unknown }[] | undefined)?.find(
+            (t) => (t.type_ ?? 'track') === 'track',
+          )?.title,
+        ),
         recordLabel: text(r.labels?.[0]?.name),
         releaseYear: year(r.year),
         genre: text(r.genres?.[0]),

@@ -63,6 +63,19 @@ describe('discogsProvider', () => {
     expect(r?.artistName).toBe('Jay-Z & Kanye West, Frank Ocean');
   });
 
+  it('skips tracklist headings when picking the key track', async () => {
+    const fetchFn = json({
+      title: 'Album',
+      artists: [{ name: 'Artist' }],
+      tracklist: [
+        { type_: 'heading', title: 'Side A' },
+        { type_: 'track', title: 'Opener' },
+      ],
+    });
+    const r = await discogsProvider('tok', fetchFn).getById('discogs:1');
+    expect(r?.songTitle).toBe('Opener');
+  });
+
   it('rejects zero-padded ids', async () => {
     const fetchFn = json({});
     expect(await discogsProvider('tok', fetchFn).getById('discogs:0249504')).toBeNull();
