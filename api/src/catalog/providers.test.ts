@@ -109,7 +109,9 @@ describe('musicBrainzProvider', () => {
     const fetchFn = json({ releases: [] });
     await musicBrainzProvider(fetchFn).search('ac/dc: back', 20);
     const query = new URL(fetchFn.mock.calls[0][0]).searchParams.get('query');
-    expect(query).toBe('(ac\\/dc\\: back) AND format:vinyl');
+    expect(query).toBe(
+      '(ac\\/dc\\: back) AND (format:"vinyl" OR format:"12\\" vinyl" OR format:"7\\" vinyl" OR format:"10\\" vinyl")',
+    );
   });
 
   it('returns null for an unknown release', async () => {
