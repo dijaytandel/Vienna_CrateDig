@@ -1,16 +1,17 @@
-// Fails the build when the JS loaded by index.html exceeds the T-38 budget.
-import { readFileSync } from 'node:fs';
+// Fails the build when the app's JavaScript exceeds the T-38 first-visit budget.
+// Every chunk counts: the app has no lazy routes, and registerSW loads Workbox at startup.
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 const BUDGET_KB = 250;
-const dist = new URL('../dist/', import.meta.url).pathname;
-const html = readFileSync(join(dist, 'index.html'), 'utf8');
-const scripts = [...html.matchAll(/(?:src|href)="\/([^"]+\.js)"/g)].map((m) => m[1]);
+const assets = fileURLToPath(new URL('../dist/assets/', import.meta.url));
+const scripts = readdirSync(assets).filter((f) => f.endsWith('.js'));
 
 let total = 0;
 for (const file of scripts) {
-  const kb = gzipSync(readFileSync(join(dist, file))).length / 1024;
+  const kb = gzipSync(readFileSync(join(assets, file))).length / 1024;
   total += kb;
   console.log(`${file}: ${kb.toFixed(1)} kB gzipped`);
 }
