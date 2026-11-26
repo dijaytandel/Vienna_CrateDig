@@ -40,7 +40,8 @@ export default function AcquireModal({
     const byStore = new Map<string, NonNullable<typeof data>['activeSightings'][number]>();
     for (const s of data?.activeSightings ?? []) {
       const prev = byStore.get(s.store.storeId);
-      if (!prev || s.priceUsd < prev.priceUsd) byStore.set(s.store.storeId, s);
+      if (!prev || (s.priceUsd ?? Infinity) < (prev.priceUsd ?? Infinity))
+        byStore.set(s.store.storeId, s);
     }
     return [...byStore.values()].sort(
       (a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity),
@@ -55,7 +56,7 @@ export default function AcquireModal({
   const pick = (value: string) => {
     setChoice(value);
     const sighting = stores.find((s) => s.store.storeId === value);
-    setPrice(sighting ? sighting.priceUsd.toFixed(2) : '');
+    setPrice(sighting?.priceUsd != null ? sighting.priceUsd.toFixed(2) : '');
   };
 
   const parsed = parseUsd(price);

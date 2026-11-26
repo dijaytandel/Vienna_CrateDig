@@ -19,7 +19,7 @@ export const CONDITION_LABEL: Record<StoreSighting['conditionGrade'], string> = 
 };
 
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
-export const formatUsd = (n: number) => usd.format(n);
+export const formatUsd = (n: number | null) => (n == null ? 'Price not listed' : usd.format(n));
 
 /** "13:30" → "1:30 PM". */
 export function formatTime(hhmm: string) {

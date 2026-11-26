@@ -28,7 +28,7 @@ export interface StoreSighting {
   albumTitle: string;
   genre: string | null;
   coverArtUrl: string | null;
-  priceUsd: number;
+  priceUsd: number | null;
   conditionGrade: string;
   specialAttributes: string | null;
   storeVerified: boolean;
@@ -156,7 +156,7 @@ export function supabaseStores(url: string, serviceRoleKey: string): StoreReposi
             albumTitle: record.album_title as string,
             genre: record.genre as string | null,
             coverArtUrl: record.cover_art_url as string | null,
-            priceUsd: Number(r.price_usd),
+            priceUsd: r.price_usd == null ? null : Number(r.price_usd),
             conditionGrade: r.condition_grade as string,
             specialAttributes: r.special_attributes as string | null,
             storeVerified: r.store_verified as boolean,
