@@ -1,4 +1,5 @@
 import { Link, Outlet } from 'react-router-dom';
+import AvatarMenu from '../components/AvatarMenu';
 import BottomNav from '../components/BottomNav';
 
 export default function AppShell() {
@@ -8,9 +9,7 @@ export default function AppShell() {
         <Link to="/discover" className="brand">
           CrateDig
         </Link>
-        <Link to="/login" className="avatar-slot">
-          Log in
-        </Link>
+        <AvatarMenu user={null} />
       </header>
       <main className="screen">
         <Outlet />
