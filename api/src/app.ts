@@ -10,6 +10,14 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 import { supabaseCrate, type CrateRepository } from './crate/repository.js';
 import { supabaseRecords, type RecordRepository } from './records/repository.js';
+import { webPushSender, type PushSender } from './broadcasts/push.js';
+import { supabaseBroadcasts, type BroadcastRepository } from './broadcasts/repository.js';
+import {
+  broadcastWriteRouter,
+  merchantBroadcastsRouter,
+  pushRouter,
+  storeBroadcastsRouter,
+} from './routes/broadcasts.js';
 import { catalogRouter } from './routes/catalog.js';
 import { broadcastsRouter, feedRouter } from './routes/feed.js';
 import { supabaseFeed, type FeedRepository } from './feed/repository.js';
@@ -33,6 +41,8 @@ export interface AppOptions {
   sightings?: SightingRepository;
   search?: SearchRepository;
   feed?: FeedRepository;
+  broadcasts?: BroadcastRepository;
+  push?: PushSender;
   now?: () => Date;
   configure?: (v1: Router, auth?: AuthService) => void;
 }
@@ -55,6 +65,15 @@ const defaultStores = () =>
     ? supabaseStores(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
     : undefined;
 
+const defaultPush = () =>
+  env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY
+    ? webPushSender({
+        publicKey: env.VAPID_PUBLIC_KEY,
+        privateKey: env.VAPID_PRIVATE_KEY,
+        subject: env.VAPID_SUBJECT,
+      })
+    : undefined;
+
 const withDb =
   <T>(make: (url: string, key: string) => T) =>
   () =>
@@ -72,6 +91,8 @@ export function createApp({
   sightings = withDb(supabaseSightings)(),
   search = withDb(supabaseSearch)(),
   feed = withDb(supabaseFeed)(),
+  broadcasts = withDb(supabaseBroadcasts)(),
+  push = defaultPush(),
   now,
   configure,
 }: AppOptions = {}) {
@@ -85,6 +106,7 @@ export function createApp({
   v1.use('/health', healthRouter);
   v1.use('/catalog', catalogRouter(catalog, records, auth));
   v1.use('/stores', nearestStoreRouter(stores));
+  v1.use('/stores', storeBroadcastsRouter(broadcasts));
   v1.use('/stores', storesRouter(stores, now));
   v1.use(
     '/sightings',
@@ -94,7 +116,10 @@ export function createApp({
   v1.use('/records', recordsRouter(recordDetails, stores));
   v1.use('/search', searchRouter(search, stores));
   v1.use('/feed', feedRouter(feed, stores, auth));
+  v1.use('/broadcasts', broadcastWriteRouter(broadcasts, feed, auth, push));
   v1.use('/broadcasts', broadcastsRouter(feed, stores));
+  v1.use('/merchant', merchantBroadcastsRouter(broadcasts, auth));
+  v1.use('/push', pushRouter(broadcasts, auth, push));
   configure?.(v1, auth);
   app.use('/api/v1', v1);
 

@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/context';
 import Button from '../components/ui/Button';
+import BroadcastPushToggle from './BroadcastPushToggle';
 
 export default function ProfileScreen() {
   const { user, preferences, signOut } = useAuth();
@@ -28,6 +29,7 @@ export default function ProfileScreen() {
         <dd>{preferences?.radiusMiles} mi</dd>
       </dl>
       <p className="muted">Editing preferences arrives with the preferences task.</p>
+      <BroadcastPushToggle />
       {error && (
         <p role="alert" className="form-error">
           {error}

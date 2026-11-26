@@ -26,6 +26,9 @@ Secrets live only in `.env` files (git-ignored) and in the host's secret store. 
 | `SUPABASE_URL` | for writes | — | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | for writes | — | Service-role key; server only, never sent to the client |
 | `DISCOGS_TOKEN` | no | — | Discogs personal access token. Without it, catalog search uses MusicBrainz only |
+| `VAPID_PUBLIC_KEY` | no | — | Web push public key (`npx web-push generate-vapid-keys`). Without the key pair, broadcasts publish but no push is sent |
+| `VAPID_PRIVATE_KEY` | no | — | Web push private key. Keep secret |
+| `VAPID_SUBJECT` | no | `mailto:hello@cratedig.app` | Contact the push services can reach |
 
 When `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY` is missing, endpoints that write to the database return `503 DATABASE_UNAVAILABLE`.
 

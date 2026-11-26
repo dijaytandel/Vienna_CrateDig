@@ -9,6 +9,8 @@ import AddRecordScreen from '../screens/crate/AddRecordScreen';
 import CrateItemScreen from '../screens/crate/CrateItemScreen';
 import CrateScreen from '../screens/crate/CrateScreen';
 import BroadcastScreen from '../screens/broadcasts/BroadcastScreen';
+import BroadcastComposerScreen from '../screens/merchant/BroadcastComposerScreen';
+import MerchantBroadcastsScreen from '../screens/merchant/MerchantBroadcastsScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -36,6 +38,8 @@ const SCREENS: Record<string, () => React.JSX.Element> = {
   '/report': ReportScreen,
   '/search': SearchScreen,
   '/sightings/:id': SightingScreen,
+  '/merchant/broadcasts': MerchantBroadcastsScreen,
+  '/merchant/broadcasts/new': BroadcastComposerScreen,
 };
 
 function screenElement(screen: ScreenRoute) {
