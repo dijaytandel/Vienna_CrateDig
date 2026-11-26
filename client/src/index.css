@@ -656,3 +656,39 @@ select.input {
 .status-flagged {
   background: var(--color-danger-bg, rgba(218, 54, 51, 0.25));
 }
+
+.screen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.feed-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.guest-banner {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text-muted, inherit);
+}
+
+.pull-hint {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  margin: 0;
+  overflow: hidden;
+}
+
+.broadcast-summary {
+  margin: 0;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
