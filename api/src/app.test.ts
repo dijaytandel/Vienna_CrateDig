@@ -24,7 +24,9 @@ describe('api', () => {
     });
     const res = await request(app).get('/api/v1/boom');
     expect(res.status).toBe(500);
-    expect(res.body).toEqual({ error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' } });
+    expect(res.body).toEqual({
+      error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' },
+    });
     expect(res.text).not.toContain('secret internals');
   });
 

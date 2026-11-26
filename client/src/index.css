@@ -7,7 +7,12 @@
   --color-accent: #f97316;
   --nav-height: 64px;
   color-scheme: dark;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   background: var(--color-bg);
   color: var(--color-text);
 }
