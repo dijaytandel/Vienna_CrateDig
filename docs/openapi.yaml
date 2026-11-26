@@ -30,6 +30,8 @@ tags:
     description: Store stock-arrival broadcasts
   - name: push
     description: Web push subscriptions for broadcasts
+  - name: profile
+    description: Signed-in user profile and preferences
 paths:
   /health:
     get:
@@ -686,6 +688,69 @@ paths:
                         zip: { type: string }
         '401':
           $ref: '#/components/responses/Unauthenticated'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+  /me:
+    get:
+      tags: [profile]
+      operationId: getMe
+      summary: The signed-in user's profile and preferences
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+    patch:
+      tags: [profile]
+      operationId: updateMe
+      summary: Update display name and discovery preferences
+      description: >-
+        Only the listed fields can change; role and email cannot. Genres and favorite stores are
+        de-duplicated. A ZIP missing from the Census lookup returns 400 ZIP_NOT_FOUND.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                displayName: { type: string, minLength: 1, maxLength: 60 }
+                defaultZip:
+                  oneOf:
+                    - { type: string, pattern: '^\d{5}$' }
+                    - type: 'null'
+                radiusMiles: { type: integer, enum: [5, 10, 25] }
+                distanceUnit: { type: string, enum: [mi, km] }
+                genres:
+                  type: array
+                  maxItems: 20
+                  items: { type: string, minLength: 1, maxLength: 40 }
+                favoriteStoreIds:
+                  type: array
+                  maxItems: 100
+                  items: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/DatabaseUnavailable'
   /push/public-key:
@@ -1352,6 +1417,35 @@ components:
         featured:
           type: array
           items: { $ref: '#/components/schemas/RecordSummary' }
+    Profile:
+      type: object
+      required:
+        [
+          userId,
+          email,
+          displayName,
+          role,
+          defaultZip,
+          radiusMiles,
+          distanceUnit,
+          genres,
+          favoriteStoreIds,
+          pushBroadcastsEnabled,
+        ]
+      properties:
+        userId: { type: string, format: uuid }
+        email: { type: string, format: email }
+        displayName: { type: string }
+        role: { type: string, enum: [collector, store_manager, admin] }
+        defaultZip:
+          oneOf:
+            - { type: string, pattern: '^\d{5}$' }
+            - type: 'null'
+        radiusMiles: { type: integer, enum: [5, 10, 25] }
+        distanceUnit: { type: string, enum: [mi, km] }
+        genres: { type: array, items: { type: string } }
+        favoriteStoreIds: { type: array, items: { type: string, format: uuid } }
+        pushBroadcastsEnabled: { type: boolean }
     Error:
       type: object
       required: [error]

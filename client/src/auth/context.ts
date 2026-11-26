@@ -18,6 +18,10 @@ export interface SignUpInput {
   zip?: string;
 }
 
+export type PreferencesPatch = Partial<
+  Pick<Preferences, 'defaultZip' | 'radiusMiles' | 'distanceUnit' | 'genres' | 'favoriteStoreIds'>
+> & { displayName?: string };
+
 export type AuthResult = { error: string | null; needsConfirmation?: boolean };
 
 export interface AuthState {
@@ -30,6 +34,8 @@ export interface AuthState {
   signOut(): Promise<AuthResult>;
   /** Adds or removes a store from the signed-in user's favorite stores. */
   toggleFavoriteStore(storeId: string): Promise<AuthResult>;
+  /** Saves profile preferences through `PATCH /me`; screens pick them up immediately. */
+  updatePreferences(patch: PreferencesPatch): Promise<AuthResult>;
 }
 
 const unavailable = async () => ({ error: 'Accounts are not available right now.' });
@@ -52,6 +58,7 @@ export const GUEST: AuthState = {
   signUp: unavailable,
   signOut: async () => ({ error: null }),
   toggleFavoriteStore: unavailable,
+  updatePreferences: unavailable,
 };
 
 export const AuthContext = createContext<AuthState>(GUEST);

@@ -21,6 +21,8 @@ import {
 } from './routes/broadcasts.js';
 import { catalogRouter } from './routes/catalog.js';
 import { merchantRouter } from './routes/merchant.js';
+import { meRouter } from './routes/me.js';
+import { supabaseProfiles, type ProfileRepository } from './me/repository.js';
 import { broadcastsRouter, feedRouter } from './routes/feed.js';
 import { supabaseFeed, type FeedRepository } from './feed/repository.js';
 import { crateRouter } from './routes/crate.js';
@@ -46,6 +48,7 @@ export interface AppOptions {
   broadcasts?: BroadcastRepository;
   push?: PushSender;
   verification?: VerificationRepository;
+  profiles?: ProfileRepository;
   now?: () => Date;
   configure?: (v1: Router, auth?: AuthService) => void;
 }
@@ -96,6 +99,7 @@ export function createApp({
   feed = withDb(supabaseFeed)(),
   broadcasts = withDb(supabaseBroadcasts)(),
   verification = withDb(supabaseVerification)(),
+  profiles = withDb(supabaseProfiles)(),
   push = defaultPush(),
   now,
   configure,
@@ -123,6 +127,7 @@ export function createApp({
   v1.use('/broadcasts', broadcastWriteRouter(broadcasts, feed, auth, push));
   v1.use('/broadcasts', broadcastsRouter(feed, stores));
   v1.use('/merchant', merchantBroadcastsRouter(broadcasts, auth));
+  v1.use('/me', meRouter(profiles, stores, auth));
   v1.use('/merchant', merchantRouter(sightings, stores, auth, verification));
   v1.use('/push', pushRouter(broadcasts, auth, push));
   configure?.(v1, auth);
