@@ -43,7 +43,7 @@ paths:
       operationId: searchCatalog
       summary: Search the external record catalog
       description: |
-        Searches Discogs and falls back to MusicBrainz when Discogs is unavailable or
+        Searches vinyl releases on Discogs and falls back to MusicBrainz when Discogs is unavailable or
         rate-limited. Identical queries (case- and whitespace-insensitive) are cached
         for 24 hours.
       security: []
@@ -135,7 +135,7 @@ components:
     ApiSourceId:
       type: string
       description: '`discogs:<release id>` or `musicbrainz:<release MBID>`.'
-      pattern: '^(discogs:\d+|musicbrainz:[0-9a-f-]{36})$'
+      pattern: '^(discogs:[1-9]\d*|musicbrainz:[0-9a-f-]{36})$'
       example: discogs:249504
     CatalogResult:
       type: object
