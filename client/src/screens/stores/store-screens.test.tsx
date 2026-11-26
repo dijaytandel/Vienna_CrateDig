@@ -287,6 +287,7 @@ describe('format helpers', () => {
     expect(telHref('1-503-555-0142')).toBe('tel:+15035550142');
     expect(telHref('555-0142')).toBeNull();
     expect(formatHours({ open: '11:00', close: '20:00' })).toBe('11:00 AM – 8:00 PM');
+    expect(formatHours({ open: '18:00', close: '24:00' })).toBe('6:00 PM – 12:00 AM');
     expect(formatHours({ open: 11, close: null } as never)).toBe('Closed');
     expect(formatHours('9-5' as never)).toBe('Closed');
   });

@@ -28,7 +28,7 @@ export function formatTime(hhmm: string) {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${suffix}`;
 }
 
-const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+const HHMM = /^(([01]\d|2[0-3]):[0-5]\d|24:00)$/;
 const isTime = (v: unknown): v is string => typeof v === 'string' && HHMM.test(v);
 
 /** Store owners write hours JSON directly, so anything that isn't {open, close} in HH:MM reads as closed. */
