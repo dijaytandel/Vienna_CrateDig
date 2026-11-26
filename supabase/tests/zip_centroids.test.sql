@@ -1,12 +1,15 @@
 begin;
-select plan(5);
+select plan(6);
 
 select cmp_ok((select count(*) from public.zip_centroids), '>', 33000::bigint,
   'zip_centroids covers the national ZCTA list');
 select results_eq(
   $$ select geo_lat::numeric(6, 2), geo_lng::numeric(7, 2) from public.zip_centroids where zip = '97205' $$,
-  $$ values (45.52::numeric(6, 2), -122.71::numeric(7, 2)) $$,
+  $$ values (45.52::numeric(6, 2), -122.70::numeric(7, 2)) $$,
   '97205 resolves to downtown Portland');
+
+select isnt_empty($$ select 1 from public.zip_centroids where zip = '11249' $$,
+  'ZCTAs added after 2020 (Brooklyn 11249) resolve');
 
 set local role anon;
 select isnt_empty($$ select 1 from public.zip_centroids where zip = '10001' $$,

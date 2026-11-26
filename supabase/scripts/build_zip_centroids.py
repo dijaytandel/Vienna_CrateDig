@@ -9,7 +9,7 @@ import sys
 import urllib.request
 import zipfile
 
-YEAR = 2020
+YEAR = 2024
 URL = (
     f"https://www2.census.gov/geo/docs/maps-data/data/gazetteer/{YEAR}_Gazetteer/"
     f"{YEAR}_Gaz_zcta_national.zip"
