@@ -26,6 +26,9 @@ class TtlCache<T> {
   }
 }
 
+/** Total time for one search across the provider fallback chain, under the client's 15 s deadline. */
+const SEARCH_BUDGET_MS = 14000;
+
 const unavailable = () =>
   new HttpError(503, 'CATALOG_UNAVAILABLE', 'The record catalog is unavailable, try again later');
 
@@ -39,9 +42,10 @@ export function createCatalogService(providers: CatalogProvider[], now: () => nu
       const key = query.trim().toLowerCase().replace(/\s+/g, ' ');
       const cached = searches.get(key);
       if (cached) return cached;
+      const deadline = AbortSignal.timeout(SEARCH_BUDGET_MS);
       for (const provider of providers) {
         try {
-          const results = await provider.search(key, MAX_RESULTS);
+          const results = await provider.search(key, MAX_RESULTS, deadline);
           searches.set(key, results);
           for (const r of results) previews.set(r.apiSourceId, r);
           return results;

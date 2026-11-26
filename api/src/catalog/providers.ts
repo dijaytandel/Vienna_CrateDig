@@ -1,8 +1,8 @@
 import type { CatalogProvider, CatalogResult, FetchFn } from './types.js';
 
 const USER_AGENT = 'CrateDig/1.0 (+https://github.com/dijaytandel/Vienna_CrateDig)';
-// MusicBrainz often takes 5-7 s; a Discogs-then-MusicBrainz fallback stays under the client's 15 s deadline.
-const TIMEOUT_MS = 7000;
+// MusicBrainz often takes 5-8 s to answer.
+const TIMEOUT_MS = 12000;
 
 export class UpstreamError extends Error {
   constructor(
@@ -13,12 +13,18 @@ export class UpstreamError extends Error {
   }
 }
 
-async function getJson(provider: string, fetchFn: FetchFn, url: string, headers = {}) {
+async function getJson(
+  provider: string,
+  fetchFn: FetchFn,
+  url: string,
+  headers = {},
+  deadline?: AbortSignal,
+) {
   let res: Response;
   try {
     res = await fetchFn(url, {
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json', ...headers },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.any([AbortSignal.timeout(TIMEOUT_MS), ...(deadline ? [deadline] : [])]),
     });
   } catch {
     throw new UpstreamError(provider);
@@ -72,7 +78,7 @@ export function discogsProvider(token: string | undefined, fetchFn: FetchFn = fe
 
   return {
     name,
-    async search(query, limit) {
+    async search(query, limit, signal) {
       if (!token) throw new UpstreamError(name);
       const params = new URLSearchParams({
         q: query,
@@ -80,7 +86,7 @@ export function discogsProvider(token: string | undefined, fetchFn: FetchFn = fe
         format: 'Vinyl',
         per_page: String(limit),
       });
-      const body = await getJson(name, fetchFn, `${base}/database/search?${params}`, auth);
+      const body = await getJson(name, fetchFn, `${base}/database/search?${params}`, auth, signal);
       return (body?.results ?? []).slice(0, limit).flatMap((r: Record<string, unknown>) => {
         const [artist, ...album] = String(r.title ?? '').split(' - ');
         if (!artist || album.length === 0) return [];
@@ -147,13 +153,13 @@ export function musicBrainzProvider(fetchFn: FetchFn = fetch) {
 
   return {
     name,
-    async search(query, limit) {
+    async search(query, limit, signal) {
       const params = new URLSearchParams({
         query: `(${escapeLucene(query)}) AND (${MB_VINYL})`,
         fmt: 'json',
         limit: String(limit),
       });
-      const body = await getJson(name, fetchFn, `${base}/release?${params}`);
+      const body = await getJson(name, fetchFn, `${base}/release?${params}`, {}, signal);
       return ((body?.releases ?? []) as MbRelease[])
         .slice(0, limit)
         .map(fromMusicBrainz)
