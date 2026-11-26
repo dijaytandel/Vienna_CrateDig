@@ -228,6 +228,16 @@ describe('offline crate writes', () => {
     expect(readQueue()[0]!.lastError).toBeUndefined();
   });
 
+  it('also sends writes queued while a flush is running', async () => {
+    enqueue({ kind: 'delete_crate_item', id: ITEM, idempotencyKey: 'f1' }, userId);
+    fetchMock.mockImplementationOnce(async () => {
+      enqueue({ kind: 'update_crate_item', id: ITEM, body: {}, idempotencyKey: 'f2' }, userId);
+      return json({ error: { code: 'NOT_FOUND', message: 'No such crate item' } }, 404);
+    });
+    expect(await flushQueue(userId)).toEqual({ sent: 2, failed: 0 });
+    expect(readQueue()).toEqual([]);
+  });
+
   it("only replays the signed-in account's writes", async () => {
     enqueue({ kind: 'delete_crate_item', id: ITEM, idempotencyKey: 'other' }, 'someone-else');
     expect(await flushQueue(userId)).toEqual({ sent: 0, failed: 0 });

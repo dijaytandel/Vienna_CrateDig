@@ -94,8 +94,14 @@ export function flushQueue(owner: string) {
   flushing ??= (async () => {
     let sent = 0;
     let failed = 0;
-    for (const entry of queueFor(owner)) {
-      if (entry.lastError) continue;
+    // Re-reads the queue each step so writes added during the flush are sent too.
+    const tried = new Set<string>();
+    for (;;) {
+      const entry = queueFor(owner).find(
+        (e) => !e.lastError && !tried.has(e.action.idempotencyKey),
+      );
+      if (!entry) break;
+      tried.add(entry.action.idempotencyKey);
       try {
         settle(entry, await send(entry.action));
         discard(entry.action.idempotencyKey);
