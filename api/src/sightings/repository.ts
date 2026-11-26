@@ -45,6 +45,8 @@ export interface SightingRepository {
   countSince(userId: string, since: Date): Promise<number>;
   create(userId: string, input: NewSighting): Promise<SightingDetail>;
   moderate(actorId: string, id: string, action: ModerationAction): Promise<SightingDetail | null>;
+  /** Active sightings at a store, unconfirmed first, newest first. */
+  listActiveForStore(storeId: string, limit: number): Promise<SightingDetail[]>;
 }
 
 export const SIGHTING_COLUMNS = `sighting_id, price_usd, condition_grade, special_attributes, store_verified, status, sighting_timestamp, archive_date, reporter:profiles(user_id, display_name), record:master_records!inner(${RECORD_COLUMNS}), store:stores!inner(store_id, business_name, street_address, city, state, zip, geo_lat, geo_lng, verification_status)`;
@@ -125,6 +127,18 @@ export function supabaseSightings(url: string, serviceRoleKey: string): Sighting
       if (error?.code === 'CD404') return null;
       if (error) throw error;
       return one('sighting_id', id);
+    },
+    async listActiveForStore(storeId, limit) {
+      const { data, error } = await db
+        .from('sightings')
+        .select(SIGHTING_COLUMNS)
+        .eq('store_id', storeId)
+        .eq('status', 'active')
+        .order('store_verified', { ascending: true })
+        .order('sighting_timestamp', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data ?? []).map(toSighting);
     },
   };
 }
