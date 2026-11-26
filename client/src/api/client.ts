@@ -82,7 +82,7 @@ export const apiGet = <T>(path: string, signal?: AbortSignal) =>
   request<T>('GET', path, undefined, { signal });
 
 export const apiSend = <T>(
-  method: 'POST' | 'PATCH' | 'DELETE',
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
   options?: RequestOptions,

@@ -692,3 +692,43 @@ select.input {
   font-size: 1.05rem;
   overflow-wrap: anywhere;
 }
+
+.counter {
+  margin: -8px 0 0;
+  text-align: right;
+  font-size: 0.875rem;
+}
+
+.counter-full {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.preview-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border: 1px dashed var(--color-accent);
+  border-radius: 12px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.toggle-row input {
+  width: 44px;
+  height: 24px;
+  accent-color: var(--color-accent);
+}
+
+@media (min-width: 1024px) {
+  .composer {
+    max-width: 720px;
+  }
+}
