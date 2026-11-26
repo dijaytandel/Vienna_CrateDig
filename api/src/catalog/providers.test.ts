@@ -69,11 +69,16 @@ describe('discogsProvider', () => {
       artists: [{ name: 'Artist' }],
       tracklist: [
         { type_: 'heading', title: 'Side A' },
-        { type_: 'track', title: 'Opener' },
+        {
+          type_: 'index',
+          title: 'Symphony No. 5',
+          sub_tracks: [{ type_: 'track', title: 'I. Allegro' }],
+        },
+        { type_: 'track', title: 'Encore' },
       ],
     });
     const r = await discogsProvider('tok', fetchFn).getById('discogs:1');
-    expect(r?.songTitle).toBe('Opener');
+    expect(r?.songTitle).toBe('I. Allegro');
   });
 
   it('rejects zero-padded ids', async () => {

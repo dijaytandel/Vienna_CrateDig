@@ -54,6 +54,14 @@ const MB_VINYL = ['vinyl', '12\\" vinyl', '7\\" vinyl', '10\\" vinyl']
   .map((f) => `format:"${f}"`)
   .join(' OR ');
 
+type DiscogsTrack = { type_?: string; title?: unknown; sub_tracks?: DiscogsTrack[] };
+
+/** First playable track; headings are skipped and index works contribute their sub-tracks. */
+const firstDiscogsTrack = (tracklist: DiscogsTrack[] = []) =>
+  tracklist
+    .flatMap((t) => (t.type_ === 'index' ? (t.sub_tracks ?? []) : [t]))
+    .find((t) => (t.type_ ?? 'track') === 'track');
+
 const escapeLucene = (q: string) => q.replace(/([+\-&|!(){}[\]^"~*?:\\/])/g, '\\$1');
 
 export function discogsProvider(token: string | undefined, fetchFn: FetchFn = fetch) {
@@ -98,11 +106,7 @@ export function discogsProvider(token: string | undefined, fetchFn: FetchFn = fe
         apiSourceId,
         artistName: discogsCredit(r.artists),
         albumTitle: r.title,
-        songTitle: text(
-          (r.tracklist as { type_?: string; title?: unknown }[] | undefined)?.find(
-            (t) => (t.type_ ?? 'track') === 'track',
-          )?.title,
-        ),
+        songTitle: text(firstDiscogsTrack(r.tracklist)?.title),
         recordLabel: text(r.labels?.[0]?.name),
         releaseYear: year(r.year),
         genre: text(r.genres?.[0]),
