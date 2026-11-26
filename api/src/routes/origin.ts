@@ -41,3 +41,15 @@ export async function resolveOrigin(
   if (!centroid) throw new HttpError(404, 'ZIP_NOT_FOUND', `No location for ZIP ${q.zip}`);
   return { ...centroid, source: 'zip' };
 }
+
+/** Like resolveOrigin, but an unmapped ZIP means "no distances" instead of an error. */
+export async function resolveOptionalOrigin(
+  ...args: Parameters<typeof resolveOrigin>
+): ReturnType<typeof resolveOrigin> {
+  try {
+    return await resolveOrigin(...args);
+  } catch (err) {
+    if (err instanceof HttpError && err.code === 'ZIP_NOT_FOUND') return null;
+    throw err;
+  }
+}

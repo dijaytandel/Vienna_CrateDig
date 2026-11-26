@@ -2,8 +2,10 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { deleteCrateItem, getCrateItem, updateCrateItem, type CrateItem } from '../../api/crate';
+import { useAuth } from '../../auth/context';
 import AlbumBadge from '../../components/ui/AlbumBadge';
 import Button from '../../components/ui/Button';
+import { cacheCrateItem, uncacheCrateItem } from '../../lib/crateCache';
 import { formatDate, formatUsd, parseUsd } from '../../lib/format';
 import { useAsync } from '../../lib/useAsync';
 import AcquireModal from './AcquireModal';
@@ -20,6 +22,7 @@ const toFields = (i: CrateItem): FieldValues => ({
 export default function CrateItemScreen() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
+  const userId = useAuth().session?.user.id ?? null;
   const {
     data: item,
     loading,
@@ -70,6 +73,7 @@ export default function CrateItemScreen() {
         userNotes: values.userNotes.trim() || null,
       });
       setData(updated);
+      if (userId) cacheCrateItem(userId, updated);
       setFields(null);
       setMessage('Saved.');
     } catch (err) {
@@ -82,6 +86,7 @@ export default function CrateItemScreen() {
   const remove = async () => {
     try {
       await deleteCrateItem(item.crateItemId);
+      if (userId) uncacheCrateItem(userId, item.crateItemId);
       navigate('/crate', { replace: true });
     } catch (err) {
       setActionError(errorText(err));
@@ -90,120 +95,122 @@ export default function CrateItemScreen() {
   };
 
   return (
-    <form className="stack" onSubmit={save} noValidate>
-      <div className="store-header">
-        <AlbumBadge
-          artistName={r.artistName}
-          albumTitle={r.albumTitle}
-          coverArtUrl={r.coverArtUrl}
-          size={72}
-        />
-        <div>
-          <h1>{r.albumTitle}</h1>
-          <p className="muted">{r.artistName}</p>
-        </div>
-      </div>
-      {message && (
-        <p role="status" className="toast">
-          {message}
-        </p>
-      )}
-      <dl className="details">
-        <dt>List</dt>
-        <dd>{item.listType === 'collection' ? 'Collection' : 'Want List'}</dd>
-        {r.releaseYear && (
-          <>
-            <dt>Released</dt>
-            <dd>{r.releaseYear}</dd>
-          </>
-        )}
-        {r.recordLabel && (
-          <>
-            <dt>Label</dt>
-            <dd>{r.recordLabel}</dd>
-          </>
-        )}
-        {r.genre && (
-          <>
-            <dt>Genre</dt>
-            <dd>{r.genre}</dd>
-          </>
-        )}
-        <dt>Catalog ID</dt>
-        <dd>{r.apiSourceId}</dd>
-        <dt>Added</dt>
-        <dd>{formatDate(item.createdAt)}</dd>
-        {item.acquiredAt && (
-          <>
-            <dt>Acquired</dt>
-            <dd>
-              {formatDate(item.acquiredAt)}
-              {item.purchasedStore ? ` at ${item.purchasedStore.businessName}` : ''}
-              {item.purchasePriceUsd != null ? ` for ${formatUsd(item.purchasePriceUsd)}` : ''}
-            </dd>
-          </>
-        )}
-      </dl>
-      <Link to={`/albums/${r.recordId}`}>Album details and nearby sightings</Link>
-
-      <RecordFields
-        values={values}
-        onChange={setFields}
-        priceLabel={item.listType === 'collection' ? 'Price paid (USD)' : 'Target price (USD)'}
-        priceError={priceError}
-      />
-      {actionError && (
-        <p role="alert" className="form-error">
-          {actionError}
-        </p>
-      )}
-
-      {confirmDelete ? (
-        <div role="alertdialog" aria-label="Delete this record?" className="notice">
-          <p>Remove {r.albumTitle} from your crate?</p>
-          <div className="button-row">
-            <Button type="button" variant="secondary" onClick={() => setConfirmDelete(false)}>
-              Keep it
-            </Button>
-            <Button type="button" onClick={() => void remove()}>
-              Delete
-            </Button>
+    <>
+      <form className="stack" onSubmit={save} noValidate>
+        <div className="store-header">
+          <AlbumBadge
+            artistName={r.artistName}
+            albumTitle={r.albumTitle}
+            coverArtUrl={r.coverArtUrl}
+            size={72}
+          />
+          <div>
+            <h1>{r.albumTitle}</h1>
+            <p className="muted">{r.artistName}</p>
           </div>
         </div>
-      ) : (
-        <Button type="button" variant="secondary" onClick={() => setConfirmDelete(true)}>
-          Delete from crate
-        </Button>
-      )}
+        {message && (
+          <p role="status" className="toast">
+            {message}
+          </p>
+        )}
+        <dl className="details">
+          <dt>List</dt>
+          <dd>{item.listType === 'collection' ? 'Collection' : 'Want List'}</dd>
+          {r.releaseYear && (
+            <>
+              <dt>Released</dt>
+              <dd>{r.releaseYear}</dd>
+            </>
+          )}
+          {r.recordLabel && (
+            <>
+              <dt>Label</dt>
+              <dd>{r.recordLabel}</dd>
+            </>
+          )}
+          {r.genre && (
+            <>
+              <dt>Genre</dt>
+              <dd>{r.genre}</dd>
+            </>
+          )}
+          <dt>Catalog ID</dt>
+          <dd>{r.apiSourceId}</dd>
+          <dt>Added</dt>
+          <dd>{formatDate(item.createdAt)}</dd>
+          {item.acquiredAt && (
+            <>
+              <dt>Acquired</dt>
+              <dd>
+                {formatDate(item.acquiredAt)}
+                {item.purchasedStore ? ` at ${item.purchasedStore.businessName}` : ''}
+                {item.purchasePriceUsd != null ? ` for ${formatUsd(item.purchasePriceUsd)}` : ''}
+              </dd>
+            </>
+          )}
+        </dl>
+        <Link to={`/albums/${r.recordId}`}>Album details and nearby sightings</Link>
 
-      <div className="action-bar">
-        {item.listType === 'want_list' && (
-          <Button type="button" block onClick={() => setAcquiring(true)}>
-            Mark as acquired
+        <RecordFields
+          values={values}
+          onChange={setFields}
+          priceLabel={item.listType === 'collection' ? 'Price paid (USD)' : 'Target price (USD)'}
+          priceError={priceError}
+        />
+        {actionError && (
+          <p role="alert" className="form-error">
+            {actionError}
+          </p>
+        )}
+
+        {confirmDelete ? (
+          <div role="alertdialog" aria-label="Delete this record?" className="notice">
+            <p>Remove {r.albumTitle} from your crate?</p>
+            <div className="button-row">
+              <Button type="button" variant="secondary" onClick={() => setConfirmDelete(false)}>
+                Keep it
+              </Button>
+              <Button type="button" onClick={() => void remove()}>
+                Delete
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button type="button" variant="secondary" onClick={() => setConfirmDelete(true)}>
+            Delete from crate
           </Button>
         )}
-        <Button
-          type="submit"
-          variant={item.listType === 'want_list' ? 'secondary' : 'primary'}
-          block
-          disabled={saving || !fields}
-        >
-          {saving ? 'Saving…' : 'Save changes'}
-        </Button>
-      </div>
 
+        <div className="action-bar">
+          {item.listType === 'want_list' && (
+            <Button type="button" block onClick={() => setAcquiring(true)}>
+              Mark as acquired
+            </Button>
+          )}
+          <Button
+            type="submit"
+            variant={item.listType === 'want_list' ? 'secondary' : 'primary'}
+            block
+            disabled={saving || !fields}
+          >
+            {saving ? 'Saving…' : 'Save changes'}
+          </Button>
+        </div>
+      </form>
       {acquiring && (
         <AcquireModal
           item={item}
           onClose={() => setAcquiring(false)}
           onDone={({ item: updated, message: text }) => {
             setData(updated);
+            if (userId) cacheCrateItem(userId, updated);
             setFields(null);
             setAcquiring(false);
             setMessage(text);
           }}
         />
       )}
-    </form>
+    </>
   );
 }

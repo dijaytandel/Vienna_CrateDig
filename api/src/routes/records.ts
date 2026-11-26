@@ -4,7 +4,7 @@ import { HttpError } from '../middleware/httpError.js';
 import type { RecordRepository } from '../records/repository.js';
 import { distanceMiles, toUnit } from '../stores/geo.js';
 import type { StoreRepository } from '../stores/repository.js';
-import { originFields, resolveOrigin } from './origin.js';
+import { originFields, resolveOptionalOrigin } from './origin.js';
 import { parse } from './parse.js';
 
 const query = z.object({ ...originFields, unit: z.enum(['mi', 'km']).default('mi') });
@@ -20,7 +20,7 @@ export function recordsRouter(records?: RecordRepository, stores?: StoreReposito
     if (!records || !stores) {
       throw new HttpError(503, 'DATABASE_UNAVAILABLE', 'The database is not configured');
     }
-    const origin = await resolveOrigin(q, (zip) => stores.zipCentroid(zip));
+    const origin = await resolveOptionalOrigin(q, (zip) => stores.zipCentroid(zip));
     const found = await records.get(id);
     if (!found) throw new HttpError(404, 'NOT_FOUND', 'No such record');
     const sightings = found.sightings.map(({ store, ...s }) => {

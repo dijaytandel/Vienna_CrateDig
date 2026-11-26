@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { errorText } from '../../api/client';
+import { ApiError, errorText } from '../../api/client';
 import { addCrateItem, listCrate, type ListType } from '../../api/crate';
 import { getRecord } from '../../api/records';
 import { useAuth } from '../../auth/context';
@@ -32,6 +32,7 @@ export default function AlbumScreen() {
   ]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [duplicate, setDuplicate] = useState(false);
 
   const r = record.data;
   if (!r) {
@@ -56,18 +57,20 @@ export default function AlbumScreen() {
   const owned = items.some((i) => i.listType === 'collection');
   const wanted = items.some((i) => i.listType === 'want_list');
 
-  const add = (listType: ListType) =>
+  const add = (listType: ListType, force = false) =>
     protect(async () => {
       setBusy(true);
       setMessage(null);
+      setDuplicate(false);
       try {
-        const item = await addCrateItem({ recordId: r.recordId, listType, force: true });
+        const item = await addCrateItem({ recordId: r.recordId, listType, force });
         crate.setData((prev) => ({ items: [...(prev?.items ?? []), item] }));
         setMessage(
           listType === 'collection' ? 'Added to your Collection.' : 'Added to your Want List.',
         );
       } catch (err) {
-        setMessage(errorText(err));
+        if (err instanceof ApiError && err.code === 'ALREADY_OWNED') setDuplicate(true);
+        else setMessage(errorText(err));
       } finally {
         setBusy(false);
       }
@@ -161,6 +164,19 @@ export default function AlbumScreen() {
         <p role="status" className="toast">
           {message}
         </p>
+      )}
+      {duplicate && (
+        <div role="alertdialog" aria-label="Already in your Collection" className="notice">
+          <p>You already own this record. Add another copy?</p>
+          <div className="button-row">
+            <Button variant="secondary" onClick={() => setDuplicate(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => add('collection', true)} disabled={busy}>
+              Add anyway
+            </Button>
+          </div>
+        </div>
       )}
       {!session && <p className="muted">Log in to save this record or report a sighting.</p>}
       <div className="action-bar">
