@@ -46,7 +46,7 @@ export default function AddRecordScreen() {
           listType,
           conditionGrade: fields.conditionGrade,
           specialAttributes: fields.specialAttributes,
-          purchasePriceUsd: listType === 'collection' ? price : null,
+          purchasePriceUsd: price,
           userNotes: fields.userNotes.trim() || null,
           force,
         },
