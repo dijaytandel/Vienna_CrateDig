@@ -53,11 +53,23 @@ describe('createCatalogService', () => {
     expect(discogs.search).toHaveBeenCalledTimes(2);
   });
 
-  it('resolves ids from recent search results without another upstream call', async () => {
+  it('prefers the full lookup over a search preview and caches it', async () => {
     const discogs = provider('discogs', [record('discogs:7')]);
+    const full = { ...record('discogs:7'), songTitle: 'So What' };
+    vi.mocked(discogs.getById).mockResolvedValue(full);
     const service = createCatalogService([discogs]);
     await service.search('abc');
+    expect(await service.getById('discogs:7')).toEqual(full);
+    expect(await service.getById('discogs:7')).toEqual(full);
+    expect(discogs.getById).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the search preview when the lookup fails', async () => {
+    const discogs = provider('discogs', [record('discogs:7')]);
+    vi.mocked(discogs.getById).mockRejectedValue(new Error('503'));
+    const service = createCatalogService([discogs]);
+    await expect(service.getById('discogs:7')).rejects.toMatchObject({ status: 503 });
+    await service.search('abc');
     expect(await service.getById('discogs:7')).toEqual(record('discogs:7'));
-    expect(discogs.getById).not.toHaveBeenCalled();
   });
 });
