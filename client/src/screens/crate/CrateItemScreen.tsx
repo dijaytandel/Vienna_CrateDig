@@ -2,8 +2,10 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { errorText } from '../../api/client';
 import { deleteCrateItem, getCrateItem, updateCrateItem, type CrateItem } from '../../api/crate';
+import { useAuth } from '../../auth/context';
 import AlbumBadge from '../../components/ui/AlbumBadge';
 import Button from '../../components/ui/Button';
+import { cacheCrateItem, uncacheCrateItem } from '../../lib/crateCache';
 import { formatDate, formatUsd, parseUsd } from '../../lib/format';
 import { useAsync } from '../../lib/useAsync';
 import AcquireModal from './AcquireModal';
@@ -20,6 +22,7 @@ const toFields = (i: CrateItem): FieldValues => ({
 export default function CrateItemScreen() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
+  const userId = useAuth().session?.user.id ?? null;
   const {
     data: item,
     loading,
@@ -70,6 +73,7 @@ export default function CrateItemScreen() {
         userNotes: values.userNotes.trim() || null,
       });
       setData(updated);
+      if (userId) cacheCrateItem(userId, updated);
       setFields(null);
       setMessage('Saved.');
     } catch (err) {
@@ -82,6 +86,7 @@ export default function CrateItemScreen() {
   const remove = async () => {
     try {
       await deleteCrateItem(item.crateItemId);
+      if (userId) uncacheCrateItem(userId, item.crateItemId);
       navigate('/crate', { replace: true });
     } catch (err) {
       setActionError(errorText(err));
@@ -199,6 +204,7 @@ export default function CrateItemScreen() {
           onClose={() => setAcquiring(false)}
           onDone={({ item: updated, message: text }) => {
             setData(updated);
+            if (userId) cacheCrateItem(userId, updated);
             setFields(null);
             setAcquiring(false);
             setMessage(text);

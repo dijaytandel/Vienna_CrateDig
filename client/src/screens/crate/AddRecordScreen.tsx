@@ -11,6 +11,8 @@ import { newId, parseUsd } from '../../lib/format';
 import { useCatalogSearch } from '../../lib/useCatalogSearch';
 import { emptyFields, type FieldValues } from './fields';
 import RecordFields from './RecordFields';
+import { useAuth } from '../../auth/context';
+import { cacheCrateItem } from '../../lib/crateCache';
 
 const LISTS = [
   { value: 'collection', label: 'Collection' },
@@ -18,6 +20,7 @@ const LISTS = [
 ] as const;
 
 export default function AddRecordScreen() {
+  const { session } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [listType, setListType] = useState<ListType>(
@@ -40,7 +43,7 @@ export default function AddRecordScreen() {
     setSaving(true);
     setError(null);
     try {
-      await addCrateItem(
+      const added = await addCrateItem(
         {
           apiSourceId: selected.apiSourceId,
           listType,
@@ -57,6 +60,7 @@ export default function AddRecordScreen() {
       } catch {
         // best-effort
       }
+      if (session) cacheCrateItem(session.user.id, added);
       navigate('/crate', { replace: true });
     } catch (err) {
       if (err instanceof ApiError && err.code === 'ALREADY_OWNED') setDuplicate(true);
