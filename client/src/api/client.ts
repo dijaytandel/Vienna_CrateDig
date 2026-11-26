@@ -22,6 +22,15 @@ export function setAccessToken(token: string | null) {
 
 export const isOfflineError = (err: unknown) => err instanceof ApiError && err.status === 0;
 
+export const REQUEST_TIMEOUT_MS = 15_000;
+
+const offlineError = () =>
+  new ApiError(
+    0,
+    'OFFLINE',
+    "You're offline. This needs a connection; try again when you're back.",
+  );
+
 interface RequestOptions {
   signal?: AbortSignal;
   idempotencyKey?: string;
@@ -38,17 +47,32 @@ async function request<T>(
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
 
+  // Fail fast instead of hanging when the device knows it is offline or the shop's signal stalls.
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw offlineError();
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  signal?.addEventListener('abort', onAbort);
+  if (signal?.aborted) controller.abort();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
   let res: Response;
   try {
     res = await fetch(`${BASE}${path}`, {
       method,
-      signal,
+      signal: controller.signal,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (err) {
-    if ((err as Error).name === 'AbortError') throw err;
+    if (signal?.aborted) throw err;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) throw offlineError();
+    if ((err as Error).name === 'AbortError') {
+      throw new ApiError(0, 'TIMEOUT', 'CrateDig is taking too long to answer. Check your signal.');
+    }
     throw new ApiError(0, 'NETWORK_ERROR', "Can't reach CrateDig. Check your connection.");
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', onAbort);
   }
 
   if (res.status === 204) return undefined as T;

@@ -1,16 +1,23 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { errorText } from '../../api/client';
-import { deleteCrateItem, getCrateItem, updateCrateItem, type CrateItem } from '../../api/crate';
+import { errorText, isOfflineError } from '../../api/client';
+import { getCrateItem, type CrateItem } from '../../api/crate';
 import { useAuth } from '../../auth/context';
 import AlbumBadge from '../../components/ui/AlbumBadge';
 import Button from '../../components/ui/Button';
-import { cacheCrateItem, uncacheCrateItem } from '../../lib/crateCache';
 import { formatDate, formatUsd, parseUsd } from '../../lib/format';
 import { useAsync } from '../../lib/useAsync';
+import {
+  findCachedItem,
+  isPendingItem,
+  removeCrateItem,
+  saveCrateEdit,
+} from '../../offline/crateWrites';
 import AcquireModal from './AcquireModal';
 import type { FieldValues } from './fields';
 import RecordFields from './RecordFields';
+
+const OFFLINE_SAVED = "Saved on this device. It will sync when you're back online.";
 
 const toFields = (i: CrateItem): FieldValues => ({
   conditionGrade: i.conditionGrade,
@@ -28,7 +35,18 @@ export default function CrateItemScreen() {
     loading,
     error,
     setData,
-  } = useAsync((signal) => getCrateItem(id, signal), [id]);
+  } = useAsync(
+    async (signal) => {
+      try {
+        return await getCrateItem(id, signal);
+      } catch (err) {
+        const cached = userId && isOfflineError(err) ? findCachedItem(userId, id) : null;
+        if (cached) return cached;
+        throw err;
+      }
+    },
+    [id, userId],
+  );
   const [fields, setFields] = useState<FieldValues | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -55,6 +73,17 @@ export default function CrateItemScreen() {
     );
   }
 
+  if (isPendingItem(item)) {
+    return (
+      <section className="stack">
+        <h1>{item.record.albumTitle}</h1>
+        <p className="muted">{item.record.artistName}</p>
+        <p role="status">Waiting to sync. You can edit this record once you&apos;re back online.</p>
+        <Link to="/crate">Back to My Crate</Link>
+      </section>
+    );
+  }
+
   const values = fields ?? toFields(item);
   const price = parseUsd(values.price);
   const priceError = Number.isNaN(price) ? 'Enter a dollar amount like 24.99' : null;
@@ -66,16 +95,15 @@ export default function CrateItemScreen() {
     setSaving(true);
     setActionError(null);
     try {
-      const updated = await updateCrateItem(item.crateItemId, {
+      const { item: updated, queued } = await saveCrateEdit(userId, item, {
         conditionGrade: values.conditionGrade,
         specialAttributes: values.specialAttributes,
         purchasePriceUsd: price,
         userNotes: values.userNotes.trim() || null,
       });
       setData(updated);
-      if (userId) cacheCrateItem(userId, updated);
       setFields(null);
-      setMessage('Saved.');
+      setMessage(queued ? OFFLINE_SAVED : 'Saved.');
     } catch (err) {
       setActionError(errorText(err));
     } finally {
@@ -85,8 +113,7 @@ export default function CrateItemScreen() {
 
   const remove = async () => {
     try {
-      await deleteCrateItem(item.crateItemId);
-      if (userId) uncacheCrateItem(userId, item.crateItemId);
+      await removeCrateItem(userId, item);
       navigate('/crate', { replace: true });
     } catch (err) {
       setActionError(errorText(err));
@@ -204,7 +231,6 @@ export default function CrateItemScreen() {
           onClose={() => setAcquiring(false)}
           onDone={({ item: updated, message: text }) => {
             setData(updated);
-            if (userId) cacheCrateItem(userId, updated);
             setFields(null);
             setAcquiring(false);
             setMessage(text);

@@ -1,9 +1,10 @@
 import { apiSend, ApiError, isOfflineError } from '../api/client';
+import type { CrateItem } from '../api/crate';
 
 /** Writes made while offline, replayed in order with their idempotency keys. */
 export type QueuedAction =
   | { kind: 'report_sighting'; body: unknown; idempotencyKey: string }
-  | { kind: 'add_crate_item'; body: unknown; idempotencyKey: string }
+  | { kind: 'add_crate_item'; body: unknown; idempotencyKey: string; preview?: CrateItem }
   | { kind: 'update_crate_item'; id: string; body: unknown; idempotencyKey: string }
   | { kind: 'delete_crate_item'; id: string; idempotencyKey: string }
   | { kind: 'acquire_crate_item'; id: string; body: unknown; idempotencyKey: string };
@@ -41,6 +42,17 @@ export function discard(idempotencyKey: string) {
   writeQueue(readQueue().filter((e) => e.action.idempotencyKey !== idempotencyKey));
 }
 
+/** Drops writes the server rejected, after the user has seen them. */
+export function discardFailed() {
+  writeQueue(readQueue().filter((e) => !e.lastError));
+}
+
+/** Replays whose first attempt already landed before the connection dropped. */
+const alreadyApplied = (a: QueuedAction, err: unknown) =>
+  err instanceof ApiError &&
+  ((a.kind === 'delete_crate_item' && err.status === 404) ||
+    (a.kind === 'acquire_crate_item' && err.code === 'NOT_ON_WANT_LIST'));
+
 function send(a: QueuedAction) {
   const opts = { idempotencyKey: a.idempotencyKey };
   switch (a.kind) {
@@ -75,6 +87,11 @@ export function flushQueue() {
         sent++;
       } catch (err) {
         if (isOfflineError(err)) break;
+        if (alreadyApplied(entry.action, err)) {
+          discard(entry.action.idempotencyKey);
+          sent++;
+          continue;
+        }
         const retryable = err instanceof ApiError && (err.status >= 500 || err.status === 429);
         writeQueue(
           readQueue().map((e) =>

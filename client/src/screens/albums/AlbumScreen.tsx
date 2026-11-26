@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ApiError, errorText } from '../../api/client';
-import { addCrateItem, listCrate, type ListType } from '../../api/crate';
+import { listCrate, type ListType } from '../../api/crate';
 import { getRecord } from '../../api/records';
 import { useAuth } from '../../auth/context';
 import { useProtectedAction } from '../../auth/useProtectedAction';
 import AlbumBadge from '../../components/ui/AlbumBadge';
 import Button from '../../components/ui/Button';
-import { cacheCrateItem } from '../../lib/crateCache';
-import { conditionLabel, formatUsd, timeAgo } from '../../lib/format';
+import { addItem } from '../../offline/crateWrites';
+import { conditionLabel, formatUsd, newId, timeAgo } from '../../lib/format';
 import { useAsync } from '../../lib/useAsync';
 import { originKey, useCurrentOrigin } from '../../lib/useCurrentOrigin';
 import { VerifiedCheck } from '../stores/StoreIcon';
@@ -64,12 +64,26 @@ export default function AlbumScreen() {
       setMessage(null);
       setDuplicate(false);
       try {
-        const item = await addCrateItem({ recordId: r.recordId, listType, force });
-        crate.setData((prev) => ({ items: [...(prev?.items ?? []), item] }));
-        if (userId) cacheCrateItem(userId, item);
-        setMessage(
-          listType === 'collection' ? 'Added to your Collection.' : 'Added to your Want List.',
+        const { item, queued } = await addItem(
+          userId,
+          { recordId: r.recordId, listType, force },
+          {
+            recordId: r.recordId,
+            apiSourceId: r.apiSourceId,
+            artistName: r.artistName,
+            albumTitle: r.albumTitle,
+            songTitle: r.songTitle,
+            recordLabel: r.recordLabel,
+            releaseYear: r.releaseYear,
+            genre: r.genre,
+            coverArtUrl: r.coverArtUrl,
+          },
+          newId(),
         );
+        crate.setData((prev) => ({ items: [...(prev?.items ?? []), item] }));
+        const added =
+          listType === 'collection' ? 'Added to your Collection.' : 'Added to your Want List.';
+        setMessage(queued ? `${added} It will sync when you're back online.` : added);
       } catch (err) {
         if (err instanceof ApiError && err.code === 'ALREADY_OWNED') setDuplicate(true);
         else setMessage(errorText(err));

@@ -9,6 +9,9 @@ import Button from '../../components/ui/Button';
 import { PillGroup } from '../../components/ui/Pill';
 import { readCrateCache, writeCrateCache } from '../../lib/crateCache';
 import { useAsync } from '../../lib/useAsync';
+import { isPendingItem, pendingAdds } from '../../offline/crateWrites';
+import { useQueueCounts } from '../../offline/useQueue';
+import type { CrateItem } from '../../api/crate';
 import { itemSubtitle } from './itemSubtitle';
 
 const TAB_KEY = 'cratedig.crateTab';
@@ -38,19 +41,25 @@ export default function CrateScreen() {
   const [q, setQ] = useState('');
   const [genre, setGenre] = useState('');
 
+  // Re-read when queued writes sync, so placeholders give way to the server's items.
+  const { pending } = useQueueCounts();
   const { data, loading, error, errorValue, reload } = useAsync(
     async (signal) => {
+      const withPending = (items: CrateItem[]) => [
+        ...pendingAdds(tab).filter((p) => !items.some((i) => i.crateItemId === p.crateItemId)),
+        ...items,
+      ];
       try {
         const { items } = await listCrate({ listType: tab }, signal);
         writeCrateCache(userId, tab, items);
-        return { items, offline: false };
+        return { items: withPending(items), offline: false };
       } catch (err) {
         const cached = readCrateCache(userId, tab);
-        if (isOfflineError(err) && cached) return { items: cached, offline: true };
+        if (isOfflineError(err) && cached) return { items: withPending(cached), offline: true };
         throw err;
       }
     },
-    [tab, userId],
+    [tab, userId, pending],
   );
 
   const items = useMemo(() => data?.items ?? [], [data]);
@@ -153,7 +162,9 @@ export default function CrateScreen() {
               <span className="store-card-body">
                 <span className="store-card-name clamp">{i.record.albumTitle}</span>
                 <span className="muted clamp">{i.record.artistName}</span>
-                <span className="muted clamp">{itemSubtitle(i)}</span>
+                <span className="muted clamp">
+                  {isPendingItem(i) ? 'Waiting to sync' : itemSubtitle(i)}
+                </span>
               </span>
             </Link>
           )}

@@ -849,3 +849,16 @@ select.input {
 .break-anywhere {
   overflow-wrap: anywhere;
 }
+
+.offline-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 16px;
+  background: var(--color-surface);
+  border-bottom: 2px solid var(--color-accent);
+  color: var(--color-text);
+}
