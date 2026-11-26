@@ -6,7 +6,7 @@ import { HttpError } from '../middleware/httpError.js';
 
 const searchQuery = z.object({ q: z.string().trim().min(2).max(200) });
 const recordBody = z.object({
-  apiSourceId: z.string().regex(/^(discogs:\d+|musicbrainz:[0-9a-f-]{36})$/),
+  apiSourceId: z.string().regex(/^(discogs:[1-9]\d*|musicbrainz:[0-9a-f-]{36})$/),
 });
 
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {

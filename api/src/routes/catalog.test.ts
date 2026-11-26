@@ -83,7 +83,11 @@ describe('POST /api/v1/catalog/records', () => {
       .post('/api/v1/catalog/records')
       .send({ apiSourceId: 'discogs:1' });
     const bad = await request(app).post('/api/v1/catalog/records').send({ apiSourceId: 'x' });
+    const padded = await request(app)
+      .post('/api/v1/catalog/records')
+      .send({ apiSourceId: 'discogs:0249504' });
     expect(missing.status).toBe(404);
     expect(bad.status).toBe(400);
+    expect(padded.status).toBe(400);
   });
 });

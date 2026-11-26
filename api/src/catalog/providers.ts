@@ -40,6 +40,17 @@ const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ?
 /** Discogs suffixes duplicate artist names with " (2)". */
 const discogsArtist = (name: string) => name.replace(/\s\(\d+\)$/, '');
 
+const discogsCredit = (artists: { name: string; join?: string }[]) =>
+  artists
+    .map((a, i) => {
+      if (i === artists.length - 1) return discogsArtist(a.name);
+      const join = a.join?.trim();
+      return discogsArtist(a.name) + (!join || join === ',' ? ', ' : ` ${join} `);
+    })
+    .join('');
+
+const escapeLucene = (q: string) => q.replace(/([+\-&|!(){}[\]^"~*?:\\/])/g, '\\$1');
+
 export function discogsProvider(token: string | undefined, fetchFn: FetchFn = fetch) {
   const base = 'https://api.discogs.com';
   const name = 'discogs';
@@ -49,7 +60,12 @@ export function discogsProvider(token: string | undefined, fetchFn: FetchFn = fe
     name,
     async search(query, limit) {
       if (!token) throw new UpstreamError(name);
-      const params = new URLSearchParams({ q: query, type: 'release', per_page: String(limit) });
+      const params = new URLSearchParams({
+        q: query,
+        type: 'release',
+        format: 'Vinyl',
+        per_page: String(limit),
+      });
       const body = await getJson(name, fetchFn, `${base}/database/search?${params}`, auth);
       return (body?.results ?? []).slice(0, limit).flatMap((r: Record<string, unknown>) => {
         const [artist, ...album] = String(r.title ?? '').split(' - ');
@@ -69,13 +85,13 @@ export function discogsProvider(token: string | undefined, fetchFn: FetchFn = fe
       });
     },
     async getById(apiSourceId) {
-      const id = /^discogs:(\d+)$/.exec(apiSourceId)?.[1];
+      const id = /^discogs:([1-9]\d*)$/.exec(apiSourceId)?.[1];
       if (!id) return null;
       const r = await getJson(name, fetchFn, `${base}/releases/${id}`, auth);
       if (!r?.title || !r.artists?.[0]?.name) return null;
       return {
         apiSourceId,
-        artistName: discogsArtist(r.artists[0].name),
+        artistName: discogsCredit(r.artists),
         albumTitle: r.title,
         songTitle: text(r.tracklist?.[0]?.title),
         recordLabel: text(r.labels?.[0]?.name),
@@ -118,7 +134,11 @@ export function musicBrainzProvider(fetchFn: FetchFn = fetch) {
   return {
     name,
     async search(query, limit) {
-      const params = new URLSearchParams({ query, fmt: 'json', limit: String(limit) });
+      const params = new URLSearchParams({
+        query: `(${escapeLucene(query)}) AND format:vinyl`,
+        fmt: 'json',
+        limit: String(limit),
+      });
       const body = await getJson(name, fetchFn, `${base}/release?${params}`);
       return ((body?.releases ?? []) as MbRelease[])
         .slice(0, limit)
