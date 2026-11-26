@@ -1,10 +1,16 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { AuthService } from '../auth/service.js';
-import { currentStoreId, requireVerifiedManager } from '../middleware/auth.js';
+import {
+  currentStoreId,
+  currentUser,
+  requireAuth,
+  requireVerifiedManager,
+} from '../middleware/auth.js';
 import { HttpError } from '../middleware/httpError.js';
 import type { SightingRepository } from '../sightings/repository.js';
 import type { StoreRepository } from '../stores/repository.js';
+import { ClaimError, type VerificationRepository } from '../verification/repository.js';
 import { parse } from './parse.js';
 
 const QUEUE_LIMIT = 100;
@@ -56,13 +62,52 @@ const storePatch = z
   })
   .strict();
 
+const claimBody = z
+  .object({
+    storeId: z.string().uuid(),
+    licenseDocUrl: z
+      .string()
+      .trim()
+      .max(500)
+      .url()
+      .refine((u) => u.startsWith('https://'), 'Business license URL must start with https://'),
+  })
+  .strict();
+
 /** The verified manager's sighting queue and store editor. */
 export function merchantRouter(
   sightings?: SightingRepository,
   stores?: StoreRepository,
   auth?: AuthService,
+  verification?: VerificationRepository,
 ) {
   const router = Router();
+  const claims = () => {
+    if (!verification) {
+      throw new HttpError(503, 'DATABASE_UNAVAILABLE', 'The database is not configured');
+    }
+    return verification;
+  };
+  router.get('/verification', requireAuth(auth), async (_req, res) => {
+    res.json({ claim: await claims().myClaim(currentUser(res).id) });
+  });
+  router.get('/claimable-stores', requireAuth(auth), async (_req, res) => {
+    res.json({ stores: await claims().claimable(currentUser(res).id) });
+  });
+  router.post('/verification', requireAuth(auth), async (req, res) => {
+    const body = parse(claimBody, req.body);
+    const repo = claims();
+    const userId = currentUser(res).id;
+    try {
+      await repo.claim(userId, body.storeId, body.licenseDocUrl);
+    } catch (err) {
+      if (err instanceof ClaimError) {
+        throw new HttpError(err.status, err.status === 404 ? 'NOT_FOUND' : 'CONFLICT', err.message);
+      }
+      throw err;
+    }
+    res.status(201).json({ claim: await repo.myClaim(userId) });
+  });
   router.get('/sightings', ...requireVerifiedManager(auth), async (_req, res) => {
     if (!sightings)
       throw new HttpError(503, 'DATABASE_UNAVAILABLE', 'The database is not configured');

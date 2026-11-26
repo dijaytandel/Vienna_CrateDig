@@ -12,6 +12,7 @@ import { supabaseCrate, type CrateRepository } from './crate/repository.js';
 import { supabaseRecords, type RecordRepository } from './records/repository.js';
 import { webPushSender, type PushSender } from './broadcasts/push.js';
 import { supabaseBroadcasts, type BroadcastRepository } from './broadcasts/repository.js';
+import { supabaseVerification, type VerificationRepository } from './verification/repository.js';
 import {
   broadcastWriteRouter,
   merchantBroadcastsRouter,
@@ -44,6 +45,7 @@ export interface AppOptions {
   feed?: FeedRepository;
   broadcasts?: BroadcastRepository;
   push?: PushSender;
+  verification?: VerificationRepository;
   now?: () => Date;
   configure?: (v1: Router, auth?: AuthService) => void;
 }
@@ -93,6 +95,7 @@ export function createApp({
   search = withDb(supabaseSearch)(),
   feed = withDb(supabaseFeed)(),
   broadcasts = withDb(supabaseBroadcasts)(),
+  verification = withDb(supabaseVerification)(),
   push = defaultPush(),
   now,
   configure,
@@ -120,7 +123,7 @@ export function createApp({
   v1.use('/broadcasts', broadcastWriteRouter(broadcasts, feed, auth, push));
   v1.use('/broadcasts', broadcastsRouter(feed, stores));
   v1.use('/merchant', merchantBroadcastsRouter(broadcasts, auth));
-  v1.use('/merchant', merchantRouter(sightings, stores, auth));
+  v1.use('/merchant', merchantRouter(sightings, stores, auth, verification));
   v1.use('/push', pushRouter(broadcasts, auth, push));
   configure?.(v1, auth);
   app.use('/api/v1', v1);
