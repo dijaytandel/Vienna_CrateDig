@@ -1,8 +1,8 @@
 import type { CatalogProvider, CatalogResult, FetchFn } from './types.js';
 
 const USER_AGENT = 'CrateDig/1.0 (+https://github.com/dijaytandel/Vienna_CrateDig)';
-// MusicBrainz often takes 5-8 s; stays under the 20 s Lambda timeout.
-const TIMEOUT_MS = 8000;
+// MusicBrainz often takes 5-7 s; a Discogs-then-MusicBrainz fallback stays under the client's 15 s deadline.
+const TIMEOUT_MS = 7000;
 
 export class UpstreamError extends Error {
   constructor(

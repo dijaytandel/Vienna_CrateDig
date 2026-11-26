@@ -13,7 +13,7 @@ import {
   removeCrateItem,
   saveCrateEdit,
 } from '../../offline/crateWrites';
-import { hasPendingWrites, QUEUE_EVENT } from '../../offline/queue';
+import { hasPendingWrites, QUEUE_EVENT, queueFor } from '../../offline/queue';
 import AcquireModal from './AcquireModal';
 import type { FieldValues } from './fields';
 import RecordFields from './RecordFields';
@@ -58,11 +58,15 @@ export default function CrateItemScreen() {
   useEffect(() => {
     if (message !== OFFLINE_SAVED || !userId) return;
     const onQueue = () => {
-      if (!hasPendingWrites(userId)) setMessage('Saved.');
+      if (hasPendingWrites(userId)) return;
+      const rejected = queueFor(userId).some(
+        (e) => e.lastError && 'id' in e.action && e.action.id === item?.crateItemId,
+      );
+      setMessage(rejected ? null : 'Saved.');
     };
     window.addEventListener(QUEUE_EVENT, onQueue);
     return () => window.removeEventListener(QUEUE_EVENT, onQueue);
-  }, [message, userId]);
+  }, [message, userId, item?.crateItemId]);
 
   if (loading && !item) {
     return (
