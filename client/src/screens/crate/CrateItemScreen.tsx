@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { errorText, isOfflineError } from '../../api/client';
 import { getCrateItem, type CrateItem } from '../../api/crate';
@@ -13,6 +13,7 @@ import {
   removeCrateItem,
   saveCrateEdit,
 } from '../../offline/crateWrites';
+import { hasPendingWrites, QUEUE_EVENT } from '../../offline/queue';
 import AcquireModal from './AcquireModal';
 import type { FieldValues } from './fields';
 import RecordFields from './RecordFields';
@@ -53,6 +54,15 @@ export default function CrateItemScreen() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [acquiring, setAcquiring] = useState(false);
+
+  useEffect(() => {
+    if (message !== OFFLINE_SAVED || !userId) return;
+    const onQueue = () => {
+      if (!hasPendingWrites(userId)) setMessage('Saved.');
+    };
+    window.addEventListener(QUEUE_EVENT, onQueue);
+    return () => window.removeEventListener(QUEUE_EVENT, onQueue);
+  }, [message, userId]);
 
   if (loading && !item) {
     return (
