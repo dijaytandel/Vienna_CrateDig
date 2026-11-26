@@ -2,6 +2,7 @@ export const MIN_PASSWORD = 8;
 
 export function validateSignup(f: Record<string, string>) {
   if (!f.displayName.trim()) return 'Enter a display name.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) return 'Enter a valid email address.';
   if (f.password.length < MIN_PASSWORD) {
     return `Use a password of at least ${MIN_PASSWORD} characters.`;
   }

@@ -6,10 +6,10 @@ import type { AvatarUser } from '../components/AvatarMenu';
 import { FakeAuth } from '../test/auth';
 import { validateSignup } from './validateSignup';
 
-function renderAt(path: string, user: AvatarUser | null = null) {
+function renderAt(path: string, user: AvatarUser | null = null, signOutError?: string) {
   const router = createMemoryRouter(APP_ROUTES, { initialEntries: [path] });
   render(
-    <FakeAuth user={user}>
+    <FakeAuth user={user} signOutError={signOutError}>
       <RouterProvider router={router} />
     </FakeAuth>,
   );
@@ -40,6 +40,8 @@ const valid = {
 describe('validateSignup', () => {
   it.each([
     [{ ...valid, displayName: '  ' }, 'Enter a display name.'],
+    [{ ...valid, email: '' }, 'Enter a valid email address.'],
+    [{ ...valid, email: 'not-an-email' }, 'Enter a valid email address.'],
     [{ ...valid, password: 'short', confirm: 'short' }, 'Use a password of at least 8 characters.'],
     [{ ...valid, confirm: 'different1' }, 'Passwords do not match.'],
     [{ ...valid, zip: '1070' }, 'ZIP code must be exactly 5 digits.'],
@@ -93,5 +95,16 @@ describe('sign out', () => {
     expect(router.state.location.pathname).toBe('/discover');
     expect(screen.getByRole('link', { name: 'Log in' })).toBeInTheDocument();
     expect(screen.queryByTestId('discover-filters')).toBeNull();
+  });
+
+  it('stays on Profile with an error when sign-out fails', async () => {
+    const router = renderAt(
+      '/profile',
+      { displayName: 'Dana Diggs', role: 'collector' },
+      'Offline',
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Offline');
+    expect(router.state.location.pathname).toBe('/profile');
   });
 });
