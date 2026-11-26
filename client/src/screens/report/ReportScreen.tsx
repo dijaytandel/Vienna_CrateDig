@@ -28,7 +28,7 @@ const STEPS = ['Album', 'Store', 'Condition', 'Price', 'Attributes'] as const;
 export default function ReportScreen() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { preferences } = useAuth();
+  const { preferences, session } = useAuth();
   const unit = preferences?.distanceUnit ?? 'mi';
   const prefRecordId = params.get('recordId');
   const prefStoreId = params.get('storeId');
@@ -103,8 +103,8 @@ export default function ReportScreen() {
         state: { toast: 'Thanks! Your sighting is live on Discover.' },
       });
     } catch (err) {
-      if (isOfflineError(err)) {
-        enqueue({ kind: 'report_sighting', body, idempotencyKey: clientRef });
+      if (isOfflineError(err) && session) {
+        enqueue({ kind: 'report_sighting', body, idempotencyKey: clientRef }, session.user.id);
         navigate('/discover', {
           replace: true,
           state: { toast: "You're offline — your sighting will be sent when you reconnect." },

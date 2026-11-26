@@ -1,5 +1,6 @@
 import { apiSend, ApiError, isOfflineError } from '../api/client';
 import type { CrateItem } from '../api/crate';
+import { cacheCrateItem, uncacheCrateItem } from '../lib/crateCache';
 
 /** Writes made while offline, replayed in order with their idempotency keys. */
 export type QueuedAction =
@@ -11,6 +12,8 @@ export type QueuedAction =
 
 export interface QueueEntry {
   action: QueuedAction;
+  /** The account that made the write; only that account's session replays it. */
+  owner: string;
   queuedAt: string;
   attempts: number;
   lastError?: string;
@@ -33,25 +36,36 @@ function writeQueue(entries: QueueEntry[]) {
   window.dispatchEvent(new Event(QUEUE_EVENT));
 }
 
-export function enqueue(action: QueuedAction) {
+export function enqueue(action: QueuedAction, owner: string) {
   const entries = readQueue().filter((e) => e.action.idempotencyKey !== action.idempotencyKey);
-  writeQueue([...entries, { action, queuedAt: new Date().toISOString(), attempts: 0 }]);
+  writeQueue([...entries, { action, owner, queuedAt: new Date().toISOString(), attempts: 0 }]);
 }
+
+export const queueFor = (owner: string) => readQueue().filter((e) => e.owner === owner);
+
+/** True while earlier writes are waiting, so new ones must queue behind them to keep order. */
+export const hasPendingWrites = (owner: string) => queueFor(owner).some((e) => !e.lastError);
 
 export function discard(idempotencyKey: string) {
   writeQueue(readQueue().filter((e) => e.action.idempotencyKey !== idempotencyKey));
 }
 
 /** Drops writes the server rejected, after the user has seen them. */
-export function discardFailed() {
-  writeQueue(readQueue().filter((e) => !e.lastError));
+export function discardFailed(owner: string) {
+  writeQueue(readQueue().filter((e) => e.owner !== owner || !e.lastError));
 }
 
-/** Replays whose first attempt already landed before the connection dropped. */
+/** A replayed delete whose item is already gone has the outcome the user wanted. */
 const alreadyApplied = (a: QueuedAction, err: unknown) =>
-  err instanceof ApiError &&
-  ((a.kind === 'delete_crate_item' && err.status === 404) ||
-    (a.kind === 'acquire_crate_item' && err.code === 'NOT_ON_WANT_LIST'));
+  err instanceof ApiError && a.kind === 'delete_crate_item' && err.status === 404;
+
+/** Swaps an offline add's placeholder for the saved item in the owner's snapshot. */
+function settle(entry: QueueEntry, result: unknown) {
+  const { action } = entry;
+  if (action.kind !== 'add_crate_item' || !action.preview) return;
+  uncacheCrateItem(entry.owner, action.preview.crateItemId);
+  cacheCrateItem(entry.owner, result as CrateItem);
+}
 
 function send(a: QueuedAction) {
   const opts = { idempotencyKey: a.idempotencyKey };
@@ -75,14 +89,14 @@ let flushing: Promise<{ sent: number; failed: number }> | null = null;
  * Sends queued writes oldest first. Stops at the first network failure; a
  * rejected write (4xx) is kept with its error so the user can see and discard it.
  */
-export function flushQueue() {
+export function flushQueue(owner: string) {
   flushing ??= (async () => {
     let sent = 0;
     let failed = 0;
-    for (const entry of readQueue()) {
+    for (const entry of queueFor(owner)) {
       if (entry.lastError) continue;
       try {
-        await send(entry.action);
+        settle(entry, await send(entry.action));
         discard(entry.action.idempotencyKey);
         sent++;
       } catch (err) {

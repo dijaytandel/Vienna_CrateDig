@@ -9,7 +9,7 @@ import type { AvatarUser } from '../components/AvatarMenu';
 import { readCrateCache, writeCrateCache } from '../lib/crateCache';
 import { RECENT_STORE_LIMIT, readCachedStore, rememberStore } from '../lib/storeCache';
 import { FakeAuth } from '../test/auth';
-import { addItem } from './crateWrites';
+import { addItem, saveCrateEdit } from './crateWrites';
 import { enqueue, flushQueue, readQueue } from './queue';
 
 const COLLECTOR: AvatarUser = { displayName: 'Dana Diggs', role: 'collector' };
@@ -140,7 +140,7 @@ describe('offline banner', () => {
   it('appears when the connection drops and counts queued changes', async () => {
     renderAt('/discover');
     goOffline();
-    enqueue({ kind: 'delete_crate_item', id: ITEM, idempotencyKey: 'k1' });
+    enqueue({ kind: 'delete_crate_item', id: ITEM, idempotencyKey: 'k1' }, userId);
     expect(await screen.findByText(/You're offline/)).toHaveTextContent(
       '1 change will sync when you reconnect',
     );
@@ -191,7 +191,7 @@ describe('offline crate writes', () => {
     expect(entry!.action.kind).toBe('update_crate_item');
 
     online = true;
-    expect(await flushQueue()).toEqual({ sent: 1, failed: 0 });
+    expect(await flushQueue(userId)).toEqual({ sent: 1, failed: 0 });
     const patch = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH')!;
     expect(new Headers(patch[1].headers).get('Idempotency-Key')).toBe(entry!.action.idempotencyKey);
   });
@@ -208,11 +208,28 @@ describe('offline crate writes', () => {
     expect(readQueue()[0]!.action.kind).toBe('acquire_crate_item');
   });
 
-  it('treats a replayed delete or acquire that already landed as synced', async () => {
-    enqueue({ kind: 'delete_crate_item', id: ITEM, idempotencyKey: 'd1' });
-    enqueue({ kind: 'acquire_crate_item', id: ITEM, body: {}, idempotencyKey: 'a1' });
-    expect(await flushQueue()).toEqual({ sent: 2, failed: 0 });
-    expect(readQueue()).toEqual([]);
+  it('treats a replayed delete as synced but keeps a conflicting acquire as failed', async () => {
+    enqueue({ kind: 'delete_crate_item', id: ITEM, idempotencyKey: 'd1' }, userId);
+    enqueue({ kind: 'acquire_crate_item', id: ITEM, body: {}, idempotencyKey: 'a1' }, userId);
+    expect(await flushQueue(userId)).toEqual({ sent: 1, failed: 1 });
+    expect(readQueue()).toEqual([expect.objectContaining({ lastError: 'Only Want List' })]);
+  });
+
+  it("only replays the signed-in account's writes", async () => {
+    enqueue({ kind: 'delete_crate_item', id: ITEM, idempotencyKey: 'other' }, 'someone-else');
+    expect(await flushQueue(userId)).toEqual({ sent: 0, failed: 0 });
+    expect(readQueue()).toHaveLength(1);
+  });
+
+  it('queues a new edit behind older pending writes to keep their order', async () => {
+    enqueue({ kind: 'delete_crate_item', id: 'older', idempotencyKey: 'o1' }, userId);
+    goOffline();
+    const out = await saveCrateEdit(userId, wanted, { userNotes: 'newer' });
+    expect(out.queued).toBe(true);
+    expect(readQueue().map((e) => e.action.kind)).toEqual([
+      'delete_crate_item',
+      'update_crate_item',
+    ]);
   });
 
   it('shows an offline add as waiting to sync, then sends it once', async () => {
@@ -220,7 +237,7 @@ describe('offline crate writes', () => {
     await screen.findByText('Kind of Blue');
     goOffline();
     const { queued, item } = await addItem(
-      null,
+      userId,
       { recordId: 'r2', listType: 'want_list' },
       { ...record, recordId: 'r2', albumTitle: 'Blue Train', artistName: 'John Coltrane' },
       '00000000-0000-4000-b000-000000000001',
@@ -230,9 +247,11 @@ describe('offline crate writes', () => {
     expect(await screen.findByText('Blue Train')).toBeInTheDocument();
     expect(screen.getByText('Waiting to sync')).toBeInTheDocument();
 
+    writeCrateCache(userId, 'want_list', [item]);
     online = true;
-    await flushQueue();
-    await flushQueue();
+    await flushQueue(userId);
+    await flushQueue(userId);
+    expect(readCrateCache(userId, 'want_list')!.map((i) => i.crateItemId)).toEqual([ITEM]);
     const posts = fetchMock.mock.calls.filter(
       ([url, init]) => String(url).endsWith('/crate') && init?.method === 'POST',
     );

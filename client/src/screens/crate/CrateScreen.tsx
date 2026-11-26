@@ -42,11 +42,13 @@ export default function CrateScreen() {
   const [genre, setGenre] = useState('');
 
   // Re-read when queued writes sync, so placeholders give way to the server's items.
-  const { pending } = useQueueCounts();
+  const { pending } = useQueueCounts(session?.user.id ?? null);
   const { data, loading, error, errorValue, reload } = useAsync(
     async (signal) => {
       const withPending = (items: CrateItem[]) => [
-        ...pendingAdds(tab).filter((p) => !items.some((i) => i.crateItemId === p.crateItemId)),
+        ...pendingAdds(session?.user.id ?? '', tab).filter(
+          (p) => !items.some((i) => i.crateItemId === p.crateItemId),
+        ),
         ...items,
       ];
       try {
