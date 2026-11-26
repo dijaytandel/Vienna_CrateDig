@@ -143,6 +143,15 @@ describe('/crate', () => {
     );
   });
 
+  it('clears the genre filter when switching lists', async () => {
+    renderAt('/crate');
+    expect(await screen.findByText('Rumours')).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Rock' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'Want List' }));
+    expect(await screen.findByText('Kind of Blue')).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toHaveValue('');
+  });
+
   it('remembers the Want List tab and shows wanted attributes', async () => {
     renderAt('/crate');
     await screen.findByText('Kind of Blue');
@@ -241,6 +250,21 @@ describe('/albums/:id', () => {
     renderAt(`/albums/${REC}`);
     expect(await screen.findByText('In your Collection')).toBeInTheDocument();
   });
+
+  it('warns before adding a second copy and can add anyway', async () => {
+    handlers.push((_url, init) => {
+      if (init?.method !== 'POST') return undefined;
+      return JSON.parse(String(init.body)).force
+        ? json(item(), 201)
+        : json({ error: { code: 'ALREADY_OWNED', message: 'Already owned' } }, 409);
+    });
+    renderAt(`/albums/${REC}`);
+    fireEvent.click(await screen.findByRole('button', { name: 'Add to Collection' }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add anyway' }));
+    expect(await screen.findByText('Added to your Collection.')).toBeInTheDocument();
+    expect(calls('POST', '/crate')).toHaveLength(2);
+  });
 });
 
 describe('/crate/items/:id', () => {
@@ -263,6 +287,13 @@ describe('/crate/items/:id', () => {
         : undefined,
     );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm' }));
+    await waitFor(() =>
+      expect(
+        Object.entries(localStorage).some(
+          ([k, v]) => k.endsWith('.collection') && String(v).includes(ITEM),
+        ),
+      ).toBe(true),
+    );
     expect(
       await screen.findByText('Moved to Collection — marked sold out at Groove Merchant.'),
     ).toBeInTheDocument();
