@@ -14,11 +14,16 @@ function bearer(req: Request) {
 export function requireAuth(auth?: AuthService): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction) => {
     const token = bearer(req);
-    if (!token) throw new HttpError(401, 'UNAUTHENTICATED', 'Log in to do this');
+    if (!token) {
+      res.set('WWW-Authenticate', 'Bearer');
+      throw new HttpError(401, 'UNAUTHENTICATED', 'Log in to do this');
+    }
     if (!auth) throw new HttpError(503, 'AUTH_UNAVAILABLE', 'Authentication is not configured');
     const user = await auth.userFromToken(token);
-    if (!user)
+    if (!user) {
+      res.set('WWW-Authenticate', 'Bearer error="invalid_token"');
       throw new HttpError(401, 'UNAUTHENTICATED', 'Your session has expired, log in again');
+    }
     res.locals.user = user;
     next();
   };

@@ -32,6 +32,7 @@ describe('requireAuth', () => {
       const res = await (header ? req.set('Authorization', header) : req);
       expect(res.status).toBe(401);
       expect(res.body.error.code).toBe('UNAUTHENTICATED');
+      expect(res.headers['www-authenticate']).toMatch(/^Bearer/);
     }
   });
 
