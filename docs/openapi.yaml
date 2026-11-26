@@ -16,6 +16,8 @@ tags:
     description: Service status
   - name: catalog
     description: External record catalog (Discogs, MusicBrainz fallback)
+  - name: stores
+    description: Local store directory
 paths:
   /health:
     get:
@@ -138,6 +140,101 @@ paths:
                     error:
                       code: AUTH_UNAVAILABLE
                       message: Authentication is not configured
+  /stores:
+    get:
+      tags: [stores]
+      operationId: listStores
+      summary: Stores near a location, nearest first
+      description: |
+        Pass `lat` and `lng` (GPS), or `zip` when GPS is off; `lat`/`lng` win when
+        both are sent. A ZIP resolves to its 2024 Census ZCTA centroid. Rejected
+        stores are never listed; pending stores are listed with `isVerified: false`.
+      security: []
+      parameters:
+        - name: lat
+          in: query
+          schema: { type: number, minimum: -90, maximum: 90 }
+          example: 45.5206
+        - name: lng
+          in: query
+          schema: { type: number, minimum: -180, maximum: 180 }
+          example: -122.7102
+        - name: zip
+          in: query
+          schema: { type: string, pattern: '^[0-9]{5}$' }
+          example: '97205'
+        - name: radius
+          in: query
+          description: Search radius in `unit`.
+          schema: { type: integer, enum: [5, 10, 25], default: 10 }
+        - name: unit
+          in: query
+          schema: { type: string, enum: [mi, km], default: mi }
+      responses:
+        '200':
+          description: Stores within the radius, sorted by distance
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [origin, unit, radius, stores]
+                properties:
+                  origin:
+                    type: object
+                    required: [lat, lng, source]
+                    properties:
+                      lat: { type: number }
+                      lng: { type: number }
+                      source: { type: string, enum: [coordinates, zip] }
+                  unit: { type: string, enum: [mi, km] }
+                  radius: { type: integer, enum: [5, 10, 25] }
+                  stores:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/StoreSummary'
+                        - type: object
+                          required: [distance]
+                          properties:
+                            distance:
+                              type: number
+                              description: Great-circle distance in `unit`, one decimal.
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          description: The ZIP has no Census centroid (e.g. PO-box-only ZIPs)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: ZIP_NOT_FOUND
+                  message: No location for ZIP 82715
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
+  /stores/{id}:
+    get:
+      tags: [stores]
+      operationId: getStore
+      summary: Store profile with active sightings and recent broadcasts
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoreDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/DatabaseUnavailable'
 components:
   securitySchemes:
     bearerAuth:
@@ -186,6 +283,110 @@ components:
           type: [string, 'null']
           format: uri
           description: When null, the client shows a two-letter initials badge.
+    StoreSummary:
+      type: object
+      required: [storeId, businessName, streetAddress, city, state, zip, geoLat, geoLng, tags, isVerified]
+      properties:
+        storeId: { type: string, format: uuid }
+        businessName: { type: string }
+        streetAddress: { type: string }
+        city: { type: string }
+        state: { type: string, pattern: '^[A-Z]{2}$' }
+        zip: { type: string, pattern: '^[0-9]{5}$' }
+        geoLat: { type: number }
+        geoLng: { type: number }
+        tags:
+          type: array
+          items: { type: string }
+        isVerified: { type: boolean }
+    DayHours:
+      type: [object, 'null']
+      description: Null means closed. A `close` at or before `open` runs past midnight.
+      required: [open, close]
+      properties:
+        open: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$', example: '11:00' }
+        close: { type: string, pattern: '^[0-2][0-9]:[0-5][0-9]$', example: '19:00' }
+    StoreDetail:
+      allOf:
+        - $ref: '#/components/schemas/StoreSummary'
+        - type: object
+          required:
+            - phone
+            - websiteUrl
+            - operatingHours
+            - timeZone
+            - isOpenNow
+            - paymentMethods
+            - activeSightings
+            - recentBroadcasts
+          properties:
+            phone: { type: [string, 'null'], example: '(503) 555-0142' }
+            websiteUrl: { type: [string, 'null'], format: uri }
+            operatingHours:
+              type: object
+              properties:
+                mon: { $ref: '#/components/schemas/DayHours' }
+                tue: { $ref: '#/components/schemas/DayHours' }
+                wed: { $ref: '#/components/schemas/DayHours' }
+                thu: { $ref: '#/components/schemas/DayHours' }
+                fri: { $ref: '#/components/schemas/DayHours' }
+                sat: { $ref: '#/components/schemas/DayHours' }
+                sun: { $ref: '#/components/schemas/DayHours' }
+            timeZone:
+              type: string
+              description: IANA zone used for `isOpenNow` (the main zone of the store's state).
+              example: America/Los_Angeles
+            isOpenNow: { type: boolean }
+            paymentMethods:
+              type: array
+              items: { type: string }
+            activeSightings:
+              type: array
+              maxItems: 50
+              description: Active, unexpired sightings, newest first.
+              items: { $ref: '#/components/schemas/StoreSighting' }
+            recentBroadcasts:
+              type: array
+              maxItems: 10
+              description: Newest first.
+              items: { $ref: '#/components/schemas/StoreBroadcast' }
+    StoreSighting:
+      type: object
+      required:
+        - sightingId
+        - recordId
+        - artistName
+        - albumTitle
+        - genre
+        - coverArtUrl
+        - priceUsd
+        - conditionGrade
+        - specialAttributes
+        - storeVerified
+        - sightingTimestamp
+      properties:
+        sightingId: { type: string, format: uuid }
+        recordId: { type: string, format: uuid }
+        artistName: { type: string }
+        albumTitle: { type: string }
+        genre: { type: [string, 'null'] }
+        coverArtUrl: { type: [string, 'null'], format: uri }
+        priceUsd: { type: number, minimum: 0, example: 28 }
+        conditionGrade: { type: string, enum: [mint, near_mint, vg_plus, vg, fair] }
+        specialAttributes: { type: [string, 'null'] }
+        storeVerified: { type: boolean }
+        sightingTimestamp: { type: string, format: date-time }
+    StoreBroadcast:
+      type: object
+      required: [broadcastId, arrivalSummary, photoUrl, featuredIds, postedAt]
+      properties:
+        broadcastId: { type: string, format: uuid }
+        arrivalSummary: { type: string }
+        photoUrl: { type: [string, 'null'], format: uri }
+        featuredIds:
+          type: array
+          items: { type: string, format: uuid }
+        postedAt: { type: string, format: date-time }
     Error:
       type: object
       required: [error]
@@ -247,6 +448,16 @@ components:
             error:
               code: CATALOG_UNAVAILABLE
               message: The record catalog is unavailable, try again later
+    DatabaseUnavailable:
+      description: The database is not configured
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: DATABASE_UNAVAILABLE
+              message: The database is not configured
     InternalError:
       description: Unexpected server error
       content:
