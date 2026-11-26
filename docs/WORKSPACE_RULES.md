@@ -43,9 +43,9 @@ The coding workflow for everyone contributing to this repo. If a rule here confl
 ### Database
 
 - Tables are plural `snake_case` (`crate_items`, `sightings`); columns are `snake_case`.
-- Primary key `id uuid default gen_random_uuid()`; foreign keys are `<singular>_id` (`store_id`).
+- Primary keys follow the PRD §3.2 schema: `<entity>_id uuid default gen_random_uuid()` (`store_id`, `sighting_id`); foreign keys reuse the referenced key's name (`store_id`, `record_id`).
 - Timestamps are `timestamptz` named `*_at` (`created_at`, `expires_at`).
-- Enum types are singular `snake_case` (`sighting_status`).
+- Enum types are singular `snake_case` (`sighting_status`), and enum values are `snake_case` too (`sold_out`, `near_mint`, `want_list`). The UI shows the PRD's labels ("SoldOut" → "Sold Out").
 - The API converts `snake_case` (DB) to `camelCase` (JSON) at the service layer.
 
 ### API
@@ -63,11 +63,11 @@ The coding workflow for everyone contributing to this repo. If a rule here confl
 
 | Prefix | Use | Example |
 |---|---|---|
-| `feature/` | New functionality (a task in `TASKS.md`) | `feature/T-20-want-to-collection-transfer` |
-| `fix/` | Bug fix | `fix/T-24-radius-km-conversion` |
+| `feature/` | New functionality (a task in `TASKS.md`) | `feature/T-20-acquire-store-modal` |
+| `fix/` | Bug fix | `fix/T-24-zip-fallback-radius` |
 | `docs/` | Documentation only | `docs/openapi-sightings` |
 | `chore/` | Tooling, deps, CI, refactors with no behaviour change | `chore/T-04-ci-workflow` |
-| `db/` | Migration-only changes | `db/T-21-sightings-expiry` |
+| `db/` | Migration-only changes | `db/T-21-sightings-archive` |
 
 - Format: `<prefix>/<task-id>-<kebab-summary>`. Include the task ID whenever one exists.
 - Keep branches current by rebasing on `main` (`git pull --rebase origin main`) and resolving conflicts locally.
@@ -94,7 +94,7 @@ Refs: T-xx
 Examples:
 
 ```
-feat(crate): add mark-as-acquired transfer endpoint
+feat(crate): add acquire store modal with sighting sync
 
 Refs: T-20
 ```
@@ -108,10 +108,10 @@ Refs: T-24
 ## 5. Pull request & review process
 
 1. **Open early.** Open a draft PR as soon as the branch has a meaningful commit. Mark it *Ready for review* once every acceptance criterion for the task is met.
-2. **Title** follows the commit format: `feat(crate): want-to-collection transfer (T-20)`.
+2. **Title** follows the commit format: `feat(crate): acquire store modal (T-20)`.
 3. **Description** must include:
    - a summary of what changed and why
-   - the linked task and story (`Closes T-20 · US-03`)
+   - the linked task and story (`Closes T-20 · US-04`)
    - the acceptance criteria checklist copied from `TASKS.md`, all ticked
    - screenshots or a short recording for UI changes (mobile 360 px width; desktop too for Merchant Portal screens)
    - notes on migrations, new env vars or OpenAPI changes
@@ -129,7 +129,7 @@ Refs: T-24
 ## 6. Testing expectations
 
 - **API:** unit tests for services and integration tests for each endpoint (happy path, auth failure, validation failure).
-- **DB:** tests for RLS policies and the expiry job (T-21).
+- **DB:** tests for RLS policies and the 180-day archive job (T-21).
 - **Client:** component tests for screens with logic (forms, toggles, offline queue).
 - Bug fixes include a regression test.
 
