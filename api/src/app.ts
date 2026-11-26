@@ -8,7 +8,11 @@ import { createCatalogService, type CatalogService } from './catalog/service.js'
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
+import { supabaseCrate, type CrateRepository } from './crate/repository.js';
+import { supabaseRecords, type RecordRepository } from './records/repository.js';
 import { catalogRouter } from './routes/catalog.js';
+import { crateRouter } from './routes/crate.js';
+import { recordsRouter } from './routes/records.js';
 import { healthRouter } from './routes/health.js';
 import { storesRouter } from './routes/stores.js';
 import { supabaseStores, type StoreRepository } from './stores/repository.js';
@@ -18,6 +22,8 @@ export interface AppOptions {
   catalog?: CatalogService;
   records?: MasterRecordRepository;
   stores?: StoreRepository;
+  crate?: CrateRepository;
+  recordDetails?: RecordRepository;
   now?: () => Date;
   configure?: (v1: Router, auth?: AuthService) => void;
 }
@@ -40,11 +46,20 @@ const defaultStores = () =>
     ? supabaseStores(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
     : undefined;
 
+const withDb =
+  <T>(make: (url: string, key: string) => T) =>
+  () =>
+    env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY
+      ? make(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+      : undefined;
+
 export function createApp({
   auth = defaultAuth(),
   catalog = defaultCatalog(),
   records = defaultRecords(),
   stores = defaultStores(),
+  crate = withDb(supabaseCrate)(),
+  recordDetails = withDb(supabaseRecords)(),
   now,
   configure,
 }: AppOptions = {}) {
@@ -58,6 +73,8 @@ export function createApp({
   v1.use('/health', healthRouter);
   v1.use('/catalog', catalogRouter(catalog, records, auth));
   v1.use('/stores', storesRouter(stores, now));
+  v1.use('/crate', crateRouter(crate, catalog, records, auth));
+  v1.use('/records', recordsRouter(recordDetails, stores));
   configure?.(v1, auth);
   app.use('/api/v1', v1);
 

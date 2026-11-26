@@ -4,6 +4,10 @@ import { SCREEN_ROUTES, type ScreenRoute } from './routes';
 import RequireAuth from '../auth/RequireAuth';
 import PlaceholderScreen from '../components/PlaceholderScreen';
 import NotFoundScreen from '../components/NotFoundScreen';
+import AlbumScreen from '../screens/albums/AlbumScreen';
+import AddRecordScreen from '../screens/crate/AddRecordScreen';
+import CrateItemScreen from '../screens/crate/CrateItemScreen';
+import CrateScreen from '../screens/crate/CrateScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -20,6 +24,10 @@ const SCREENS: Record<string, () => React.JSX.Element> = {
   '/welcome': WelcomeScreen,
   '/stores': StoresScreen,
   '/stores/:id': StoreProfileScreen,
+  '/crate': CrateScreen,
+  '/crate/add': AddRecordScreen,
+  '/crate/items/:id': CrateItemScreen,
+  '/albums/:id': AlbumScreen,
 };
 
 function screenElement(screen: ScreenRoute) {
