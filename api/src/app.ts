@@ -13,6 +13,8 @@ import { supabaseRecords, type RecordRepository } from './records/repository.js'
 import { catalogRouter } from './routes/catalog.js';
 import { crateRouter } from './routes/crate.js';
 import { recordsRouter } from './routes/records.js';
+import { searchRouter } from './routes/search.js';
+import { supabaseSearch, type SearchRepository } from './search/repository.js';
 import { nearestStoreRouter, sightingsRouter } from './routes/sightings.js';
 import { supabaseSightings, type SightingRepository } from './sightings/repository.js';
 import { healthRouter } from './routes/health.js';
@@ -27,6 +29,7 @@ export interface AppOptions {
   crate?: CrateRepository;
   recordDetails?: RecordRepository;
   sightings?: SightingRepository;
+  search?: SearchRepository;
   now?: () => Date;
   configure?: (v1: Router, auth?: AuthService) => void;
 }
@@ -64,6 +67,7 @@ export function createApp({
   crate = withDb(supabaseCrate)(),
   recordDetails = withDb(supabaseRecords)(),
   sightings = withDb(supabaseSightings)(),
+  search = withDb(supabaseSearch)(),
   now,
   configure,
 }: AppOptions = {}) {
@@ -84,6 +88,7 @@ export function createApp({
   );
   v1.use('/crate', crateRouter(crate, catalog, records, auth));
   v1.use('/records', recordsRouter(recordDetails, stores));
+  v1.use('/search', searchRouter(search, stores));
   configure?.(v1, auth);
   app.use('/api/v1', v1);
 
