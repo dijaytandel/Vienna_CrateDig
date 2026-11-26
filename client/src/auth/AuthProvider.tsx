@@ -58,6 +58,7 @@ export default function AuthProvider({
   const [status, setStatus] = useState<AuthState['status']>(client ? 'loading' : 'ready');
   // Bumped on every auth change so a slow profile lookup can't overwrite a newer state.
   const generation = useRef(0);
+  const userId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!client) return;
@@ -66,6 +67,7 @@ export default function AuthProvider({
       const mine = ++generation.current;
       const nextAccount = next ? await loadAccount(client, next) : null;
       if (!current || mine !== generation.current) return;
+      userId.current = next?.user.id ?? null;
       setSession(next);
       setAccount(nextAccount);
       setStatus('ready');
@@ -112,6 +114,7 @@ export default function AuthProvider({
         const { error } = await client.auth.signOut();
         if (error) return { error: 'Could not sign out. Check your connection and try again.' };
         generation.current++;
+        userId.current = null;
         setSession(null);
         setAccount(null);
         setStatus('ready');
@@ -119,7 +122,6 @@ export default function AuthProvider({
       },
       async toggleFavoriteStore(storeId) {
         if (!session || !account) return { error: 'Log in to save favorite stores.' };
-        const mine = generation.current;
         const current = account.preferences.favoriteStoreIds;
         const next = current.includes(storeId)
           ? current.filter((id) => id !== storeId)
@@ -130,7 +132,7 @@ export default function AuthProvider({
           .eq('user_id', session.user.id);
         if (error) return { error: 'Could not update your favorite stores. Try again.' };
         // The user signed out or switched accounts while the write was in flight.
-        if (mine !== generation.current) return { error: null };
+        if (userId.current !== session.user.id) return { error: null };
         setAccount((a) => a && { ...a, preferences: { ...a.preferences, favoriteStoreIds: next } });
         return { error: null };
       },
